@@ -15,7 +15,9 @@ return new class extends Migration {
             $table->text('description')->nullable();
             $table->dateTime('date');
             $table->enum('type', ['positive', 'negative', 'neutral'])->default('positive');
-            $table->foreignId('life_area_id')->cascadeOn('life_areas')->onDelete('cascade');
+            $table->foreignId('life_area_id')
+                ->constrained('life_areas')
+                ->onDelete('cascade');
             $table->timestamps();
         });
     }
