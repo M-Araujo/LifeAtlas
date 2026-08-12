@@ -1,147 +1,125 @@
 # Life Atlas
 
-Life Atlas is a personal growth and journaling platform that helps users track different areas of their lives through notes, metrics and visual progress.
+Life Atlas is a personal growth and journaling platform that helps users track different areas of their lives through notes, metrics, and visual progress.
 
 ## Tech Stack
 
-- Laravel 12
-- Livewire
-- MariaDB
-- Docker
-- Docker Compose
+* Laravel 12
+* Livewire
+* MariaDB
+* Docker
 
 ## Requirements
 
-- Docker Desktop
-- Git
+* Docker Desktop
+* Git
 
 ## Installation
 
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/<username>/life-atlas.git
-cd life-atlas
+git clone https://github.com/M-Araujo/LifeAtlas.git
+cd LifeAtlas
 ```
 
-### 2. Install PHP dependencies
+### 2. Install dependencies
 
 ```bash
 composer install
-```
-
-### 3. Install JavaScript dependencies
-
-```bash
 npm install
 ```
 
-### 4. Create the environment file
+### 3. Create the environment file
 
 ```bash
 cp .env.example .env
 ```
 
-### 5. Generate the application key
-
-```bash
-php artisan key:generate
-```
-
-### 6. Start Docker
+### 4. Start Docker
 
 ```bash
 docker compose up --build -d
 ```
 
-### 7. Run the database migrations
+### 5. Generate the application key
 
 ```bash
-docker compose exec laravel.test php artisan migrate
+docker exec lifeatlas-laravel.test-1 php artisan key:generate
 ```
 
-### 8. Install frontend assets
+### 6. Run migrations and seed the database
 
 ```bash
-npm run dev
+docker exec lifeatlas-laravel.test-1 php artisan migrate --seed
 ```
+
+This runs the migrations and the `DatabaseSeeder`, which seeds the initial life areas.
 
 ## Access
 
-Application
+Application:
 
-```
+```text
 http://localhost
 ```
 
 ## Database
 
-Host
+The MariaDB database is available at:
 
-```
-127.0.0.1
-```
-
-Port
-
-```
-3306
+```text
+Host: 127.0.0.1
+Port: 3306
+Database: life_atlas
+Username: sail
+Password: password
 ```
 
-Database
+## Useful Docker Commands
 
-```
-life_atlas
-```
-
-Username
-
-```
-sail
-```
-
-Password
-
-```
-password
-```
-
-## Useful Commands
-
-Start containers
+### Start containers
 
 ```bash
 docker compose up -d
 ```
 
-Stop containers
+### Stop containers
 
 ```bash
 docker compose down
 ```
 
-View logs
+### View logs
 
 ```bash
 docker compose logs -f
 ```
 
-Run Artisan
+## Useful Artisan Commands
+
+Run an Artisan command:
 
 ```bash
-docker compose exec laravel.test php artisan
+docker exec lifeatlas-laravel.test-1 php artisan
 ```
 
-Run migrations
+Run migrations:
 
 ```bash
-docker compose exec laravel.test php artisan migrate
+docker exec lifeatlas-laravel.test-1 php artisan migrate
 ```
 
-Run tests
+Run the database seeder:
 
 ```bash
-docker compose exec laravel.test php artisan test
+docker exec lifeatlas-laravel.test-1 php artisan db:seed
+```
+
+Run tests:
+
+```bash
+docker exec lifeatlas-laravel.test-1 php artisan test
 ```
 
 ## Project Status
