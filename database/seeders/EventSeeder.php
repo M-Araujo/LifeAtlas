@@ -63,9 +63,6 @@ class EventSeeder extends Seeder {
 
             for ($month = 0; $month < 5; $month++) {
 
-                $start = Carbon::now()->subMonths($month)->startOfMonth();
-                $end = Carbon::now()->subMonths($month)->endOfMonth();
-
                 $count = rand(1, 10);
 
                 for ($i = 0; $i < $count; $i++) {
@@ -73,9 +70,7 @@ class EventSeeder extends Seeder {
                     $template = fake()->randomElement($templates[$areaName]);
 
                     $events[] = [
-                        'name' => $template[0],
                         'description' => $template[1],
-                        'date' => fake()->dateTimeBetween($start, $end),
                         'type' => $template[2],
                         'life_area_id' => $areaId,
                         'created_at' => now(),

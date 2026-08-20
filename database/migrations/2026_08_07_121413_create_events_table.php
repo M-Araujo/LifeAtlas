@@ -11,9 +11,7 @@ return new class extends Migration {
     public function up(): void {
         Schema::create('events', function (Blueprint $table) {
             $table->id();
-            $table->string('name');
             $table->text('description')->nullable();
-            $table->dateTime('date');
             $table->enum('type', ['positive', 'negative', 'neutral'])->default('positive');
             $table->foreignId('life_area_id')
                 ->constrained('life_areas')

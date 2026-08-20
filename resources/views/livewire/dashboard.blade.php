@@ -32,52 +32,73 @@
             </div>
 
 
-            <div class="grid gap-4 md:grid-cols-[200px_1fr_auto]">
+      <form wire:submit="saveRecord">
 
-                {{-- Category --}}
-                <div>
-                    <label class="mb-2 block text-xs font-medium uppercase tracking-wide text-slate-500">
-                        Category
-                    </label>
+    <div class="grid gap-4 md:grid-cols-[200px_1fr_auto]">
 
-                    <select
-                        class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm"
-                    >
-                        <option>Health</option>
-                        <option>Career</option>
-                        <option>Relationships</option>
-                        <option>Finance</option>
-                        <option>Growth</option>
-                        <option>Recreation</option>
-                    </select>
-                </div>
+        {{-- Category --}}
+        <div>
+            <label class="mb-2 block text-xs font-medium uppercase tracking-wide text-slate-500">
+                Category
+            </label>
 
+            <select
+                wire:model="life_area_id"
+                class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm"
+            >
+                <option value="">Select a category</option>
+                <option value="1">Health</option>
+                <option value="2">Career</option>
+                <option value="3">Relationships</option>
+                <option value="4">Finance</option>
+                <option value="5">Growth</option>
+                <option value="6">Recreation</option>
+            </select>
+        </div>
 
-                {{-- Note --}}
-                <div>
-                    <label class="mb-2 block text-xs font-medium uppercase tracking-wide text-slate-500">
-                        Note
-                    </label>
+        {{-- Note --}}
+        <div>
+            <label class="mb-2 block text-xs font-medium uppercase tracking-wide text-slate-500">
+                Note
+            </label>
 
-                    <input
-                        type="text"
-                        placeholder="What shaped this moment?"
-                        class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm"
-                    >
-                </div>
+            <input
+                type="text"
+                wire:model="description"
+                placeholder="What shaped this moment?"
+                class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm"
+            >
+        </div>
 
+        {{-- Type --}}
+        <div>
+            <label class="mb-2 block text-xs font-medium uppercase tracking-wide text-slate-500">
+                Type
+            </label>
 
-                {{-- Save --}}
-                <div class="flex items-end">
-                    <button
-                        type="button"
-                        class="w-full rounded-lg bg-emerald-800 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-emerald-900 md:w-auto"
-                    >
-                        + Save
-                    </button>
-                </div>
+            <select
+                wire:model="type"
+                class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm"
+            >
+                <option value="neutral">Neutral</option>
+                <option value="positive">Positive</option>
+                <option value="negative">Negative</option>
+            </select>
+        </div>
 
-            </div>
+        {{-- Save --}}
+        <div class="flex items-end">
+            <button
+                type="submit"
+                class="w-full rounded-lg bg-emerald-800 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-emerald-900 md:w-auto"
+            >
+                + Save
+            </button>
+        </div>
+
+    </div>
+
+</form>
 
         </section>
 
