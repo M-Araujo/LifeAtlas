@@ -15,4 +15,8 @@ class Event extends Model {
         'description',
         'type',
     ];
+
+    public function lifeArea() {
+        return $this->belongsTo(LifeArea::class);
+    }
 }

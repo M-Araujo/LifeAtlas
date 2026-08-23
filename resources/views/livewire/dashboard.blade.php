@@ -32,73 +32,73 @@
             </div>
 
 
-      <form wire:submit="saveRecord">
+            <form wire:submit="saveRecord">
 
-    <div class="grid gap-4 md:grid-cols-[200px_1fr_auto]">
+                <div class="grid gap-4 md:grid-cols-[200px_1fr_auto]">
 
-        {{-- Category --}}
-        <div>
-            <label class="mb-2 block text-xs font-medium uppercase tracking-wide text-slate-500">
-                Category
-            </label>
+                    {{-- Category --}}
+                    <div>
+                        <label class="mb-2 block text-xs font-medium uppercase tracking-wide text-slate-500">
+                            Category
+                        </label>
 
-            <select
-                wire:model="life_area_id"
-                class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm"
-            >
-                <option value="">Select a category</option>
-                <option value="1">Health</option>
-                <option value="2">Career</option>
-                <option value="3">Relationships</option>
-                <option value="4">Finance</option>
-                <option value="5">Growth</option>
-                <option value="6">Recreation</option>
-            </select>
-        </div>
+                        <select
+                            wire:model="life_area_id"
+                            class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm"
+                        >
+                            <option value="">Select a category</option>
+                            <option value="1">Health</option>
+                            <option value="2">Career</option>
+                            <option value="3">Relationships</option>
+                            <option value="4">Finance</option>
+                            <option value="5">Growth</option>
+                            <option value="6">Recreation</option>
+                        </select>
+                    </div>
 
-        {{-- Note --}}
-        <div>
-            <label class="mb-2 block text-xs font-medium uppercase tracking-wide text-slate-500">
-                Note
-            </label>
+                    {{-- Note --}}
+                    <div>
+                        <label class="mb-2 block text-xs font-medium uppercase tracking-wide text-slate-500">
+                            Note
+                        </label>
 
-            <input
-                type="text"
-                wire:model="description"
-                placeholder="What shaped this moment?"
-                class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm"
-            >
-        </div>
+                        <input
+                            type="text"
+                            wire:model="description"
+                            placeholder="What shaped this moment?"
+                            class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm"
+                        >
+                    </div>
 
-        {{-- Type --}}
-        <div>
-            <label class="mb-2 block text-xs font-medium uppercase tracking-wide text-slate-500">
-                Type
-            </label>
+                    {{-- Type --}}
+                    <div>
+                        <label class="mb-2 block text-xs font-medium uppercase tracking-wide text-slate-500">
+                            Type
+                        </label>
 
-            <select
-                wire:model="type"
-                class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm"
-            >
-                <option value="neutral">Neutral</option>
-                <option value="positive">Positive</option>
-                <option value="negative">Negative</option>
-            </select>
-        </div>
+                        <select
+                            wire:model="type"
+                            class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm"
+                        >
+                            <option value="neutral">Neutral</option>
+                            <option value="positive">Positive</option>
+                            <option value="negative">Negative</option>
+                        </select>
+                    </div>
 
-        {{-- Save --}}
-        <div class="flex items-end">
-            <button
-                type="submit"
-                class="w-full rounded-lg bg-emerald-800 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-emerald-900 md:w-auto"
-            >
-                + Save
-            </button>
-        </div>
+                    {{-- Save --}}
+                    <div class="flex items-end">
+                        <button
+                            type="submit"
+                            class="w-full rounded-lg bg-emerald-800 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-emerald-900 md:w-auto"
+                        >
+                            + Save
+                        </button>
+                    </div>
 
-    </div>
+                </div>
 
-</form>
+            </form>
 
         </section>
 
@@ -203,73 +203,23 @@
             {{-- Dummy results --}}
             <div class="divide-y divide-slate-100">
 
-                <div class="grid gap-2 px-5 py-4 md:grid-cols-[120px_160px_1fr]">
+                @foreach ($events as $event)
+                    <div class="grid gap-2 px-5 py-4 md:grid-cols-[120px_160px_1fr]">
 
-                    <span class="text-sm text-slate-400">
-                        16 Aug 2026
-                    </span>
+                        <span class="text-sm text-slate-400">
+                            {{ $event->created_at->format('d M Y') }}
+                        </span>
 
-                    <span class="text-sm font-medium text-emerald-800">
-                        Career
-                    </span>
+                        <span class="text-sm font-medium text-emerald-800">
+                            {{ $event->lifeArea->name }}
+                        </span>
 
-                    <span class="text-sm text-slate-600">
-                        Worked on my Laravel project.
-                    </span>
+                        <span class="text-sm text-slate-600">
+                            {{ $event->description }}
+                        </span>
 
-                </div>
-
-
-                <div class="grid gap-2 px-5 py-4 md:grid-cols-[120px_160px_1fr]">
-
-                    <span class="text-sm text-slate-400">
-                        15 Aug 2026
-                    </span>
-
-                    <span class="text-sm font-medium text-emerald-800">
-                        Health
-                    </span>
-
-                    <span class="text-sm text-slate-600">
-                        Completed my training session.
-                    </span>
-
-                </div>
-
-
-                <div class="grid gap-2 px-5 py-4 md:grid-cols-[120px_160px_1fr]">
-
-                    <span class="text-sm text-slate-400">
-                        14 Aug 2026
-                    </span>
-
-                    <span class="text-sm font-medium text-emerald-800">
-                        Growth
-                    </span>
-
-                    <span class="text-sm text-slate-600">
-                        Studied something new today.
-                    </span>
-
-                </div>
-
-
-                <div class="grid gap-2 px-5 py-4 md:grid-cols-[120px_160px_1fr]">
-
-                    <span class="text-sm text-slate-400">
-                        13 Aug 2026
-                    </span>
-
-                    <span class="text-sm font-medium text-emerald-800">
-                        Finance
-                    </span>
-
-                    <span class="text-sm text-slate-600">
-                        Reviewed my monthly finances.
-                    </span>
-
-                </div>
-
+                    </div>
+                @endforeach
             </div>
 
         </section>
@@ -366,82 +316,19 @@
                 {{-- Dummy categories --}}
                 <div class="mt-4 space-y-2">
 
-                    <div class="flex items-center justify-between rounded-lg bg-slate-50 px-4 py-3">
+                    @foreach($lifeAreas as $lifeArea)
+                        <div class="flex items-center justify-between rounded-lg bg-slate-50 px-4 py-3">
 
-                        <span class="text-sm">
-                            Health
-                        </span>
+                            <span class="text-sm">
+                                {{$lifeArea->name}}
+                            </span>
 
-                        <span class="text-xs text-slate-500">
-                            7 entries
-                        </span>
+                            <span class="text-xs text-slate-500">
+                                {{$lifeArea->events->count()}} entries
+                            </span>
 
-                    </div>
-
-
-                    <div class="flex items-center justify-between rounded-lg bg-slate-50 px-4 py-3">
-
-                        <span class="text-sm">
-                            Career
-                        </span>
-
-                        <span class="text-xs text-slate-500">
-                            5 entries
-                        </span>
-
-                    </div>
-
-
-                    <div class="flex items-center justify-between rounded-lg bg-slate-50 px-4 py-3">
-
-                        <span class="text-sm">
-                            Growth
-                        </span>
-
-                        <span class="text-xs text-slate-500">
-                            5 entries
-                        </span>
-
-                    </div>
-
-
-                    <div class="flex items-center justify-between rounded-lg bg-slate-50 px-4 py-3">
-
-                        <span class="text-sm">
-                            Finance
-                        </span>
-
-                        <span class="text-xs text-slate-500">
-                            4 entries
-                        </span>
-
-                    </div>
-
-
-                    <div class="flex items-center justify-between rounded-lg bg-slate-50 px-4 py-3">
-
-                        <span class="text-sm">
-                            Relationships
-                        </span>
-
-                        <span class="text-xs text-slate-500">
-                            3 entries
-                        </span>
-
-                    </div>
-
-
-                    <div class="flex items-center justify-between rounded-lg bg-slate-50 px-4 py-3">
-
-                        <span class="text-sm">
-                            Recreation
-                        </span>
-
-                        <span class="text-xs text-slate-500">
-                            3 entries
-                        </span>
-
-                    </div>
+                        </div>
+                    @endforeach
 
                 </div>
 
