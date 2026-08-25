@@ -34,9 +34,9 @@
 
             <form wire:submit="saveRecord">
 
-                <div class="grid gap-4 md:grid-cols-[200px_1fr_auto]">
+                {{-- Category + Type --}}
+                <div class="grid gap-4 md:grid-cols-2">
 
-                    {{-- Category --}}
                     <div>
                         <label class="mb-2 block text-xs font-medium uppercase tracking-wide text-slate-500">
                             Category
@@ -47,30 +47,17 @@
                             class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm"
                         >
                             <option value="">Select a category</option>
-                            <option value="1">Health</option>
-                            <option value="2">Career</option>
-                            <option value="3">Relationships</option>
-                            <option value="4">Finance</option>
-                            <option value="5">Growth</option>
-                            <option value="6">Recreation</option>
+                            @foreach ($lifeAreas as $lifeArea)
+                            <option value="{{ $lifeArea->id }}">
+                                {{ $lifeArea->name }}
+                            </option>
+                            @endforeach
                         </select>
+                        @error('life_area_id')
+                            <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
+                        @enderror
                     </div>
 
-                    {{-- Note --}}
-                    <div>
-                        <label class="mb-2 block text-xs font-medium uppercase tracking-wide text-slate-500">
-                            Note
-                        </label>
-
-                        <input
-                            type="text"
-                            wire:model="description"
-                            placeholder="What shaped this moment?"
-                            class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm"
-                        >
-                    </div>
-
-                    {{-- Type --}}
                     <div>
                         <label class="mb-2 block text-xs font-medium uppercase tracking-wide text-slate-500">
                             Type
@@ -84,18 +71,38 @@
                             <option value="positive">Positive</option>
                             <option value="negative">Negative</option>
                         </select>
+                        @error('type')
+                            <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
+                        @enderror
                     </div>
 
-                    {{-- Save --}}
-                    <div class="flex items-end">
-                        <button
-                            type="submit"
-                            class="w-full rounded-lg bg-emerald-800 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-emerald-900 md:w-auto"
-                        >
-                            + Save
-                        </button>
-                    </div>
+                </div>
 
+                {{-- Note --}}
+                <div class="mt-4">
+                    <label class="mb-2 block text-xs font-medium uppercase tracking-wide text-slate-500">
+                        Note
+                    </label>
+
+                    <textarea
+                        wire:model="description"
+                        rows="3"
+                        placeholder="What shaped this moment?"
+                        class="w-full resize-none rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm"
+                    ></textarea>
+                    @error('description')
+                        <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
+                    @enderror
+                </div>
+
+                {{-- Save --}}
+                <div class="mt-4 flex justify-end">
+                    <button
+                        type="submit"
+                        class="rounded-lg bg-emerald-800 px-6 py-2.5 text-sm font-medium text-white transition hover:bg-emerald-900"
+                    >
+                        + Save
+                    </button>
                 </div>
 
             </form>
@@ -114,7 +121,7 @@
                 </p>
 
                 <p class="mt-2 text-3xl font-semibold text-slate-900">
-                    12
+                    {{ $stats['check_in_days'] }}
                 </p>
 
                 <p class="mt-1 text-xs text-slate-400">
@@ -132,7 +139,7 @@
                 </p>
 
                 <p class="mt-2 text-3xl font-semibold text-slate-900">
-                    27
+                    {{ $stats['total'] }}
                 </p>
 
                 <p class="mt-1 text-xs text-slate-400">
@@ -150,12 +157,39 @@
                 </p>
 
                 <p class="mt-2 text-3xl font-semibold text-slate-900">
-                    6
+                    {{ $stats['life_areas'] }}
                 </p>
 
                 <p class="mt-1 text-xs text-slate-400">
                     Currently tracked
                 </p>
+
+            </div>
+            <div class="mt-4 grid gap-4 md:grid-cols-3">
+
+                <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+                    <p class="text-sm text-slate-500">Positive</p>
+                    <p class="mt-2 text-3xl font-semibold text-emerald-700">
+                        {{ $stats['positive'] }}
+                    </p>
+                    <p class="mt-1 text-xs text-slate-400">All time</p>
+                </div>
+
+                <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+                    <p class="text-sm text-slate-500">Neutral</p>
+                    <p class="mt-2 text-3xl font-semibold text-slate-700">
+                        {{ $stats['neutral'] }}
+                    </p>
+                    <p class="mt-1 text-xs text-slate-400">All time</p>
+                </div>
+
+                <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+                    <p class="text-sm text-slate-500">Negative</p>
+                    <p class="mt-2 text-3xl font-semibold text-red-700">
+                        {{ $stats['negative'] }}
+                    </p>
+                    <p class="mt-1 text-xs text-slate-400">All time</p>
+                </div>
 
             </div>
 
@@ -187,13 +221,27 @@
 
 
                 {{-- Search --}}
-                <div class="mt-4">
+                <div class="mt-4 grid gap-3 md:grid-cols-[1fr_200px]">
 
                     <input
                         type="search"
-                        placeholder="Search notes or category..."
+                        wire:model.live="search"
+                        placeholder="Search notes..."
                         class="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm"
                     >
+
+                    <select
+                        wire:model.live="searchLifeArea"
+                        class="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm"
+                    >
+                        <option value="">All categories</option>
+
+                        @foreach ($lifeAreas as $lifeArea)
+                            <option value="{{ $lifeArea->id }}">
+                                {{ $lifeArea->name }}
+                            </option>
+                        @endforeach
+                    </select>
 
                 </div>
 
@@ -201,9 +249,9 @@
 
 
             {{-- Dummy results --}}
-            <div class="divide-y divide-slate-100">
+            <div class="max-h-80 overflow-y-auto divide-y divide-slate-100">
+                @forelse ($events as $event)
 
-                @foreach ($events as $event)
                     <div class="grid gap-2 px-5 py-4 md:grid-cols-[120px_160px_1fr]">
 
                         <span class="text-sm text-slate-400">
@@ -219,7 +267,14 @@
                         </span>
 
                     </div>
-                @endforeach
+
+                @empty
+
+                    <div class="px-5 py-8 text-center text-sm text-slate-400">
+                        No entries found.
+                    </div>
+
+                @endforelse
             </div>
 
         </section>
@@ -301,19 +356,6 @@
                 </p>
 
 
-                {{-- Search --}}
-                <div class="mt-4">
-
-                    <input
-                        type="search"
-                        placeholder="Search a category..."
-                        class="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm"
-                    >
-
-                </div>
-
-
-                {{-- Dummy categories --}}
                 <div class="mt-4 space-y-2">
 
                     @foreach($lifeAreas as $lifeArea)
