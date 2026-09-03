@@ -214,7 +214,7 @@
                     </div>
 
                     <span class="text-xs text-slate-400">
-                        27 entries
+                        {{ $events->count() }} entries
                     </span>
 
                 </div>
@@ -247,12 +247,10 @@
 
             </div>
 
-
-            {{-- Dummy results --}}
             <div class="max-h-80 overflow-y-auto divide-y divide-slate-100">
                 @forelse ($events as $event)
 
-                    <div class="grid gap-2 px-5 py-4 md:grid-cols-[120px_160px_1fr]">
+                <div class="grid gap-2 px-5 py-4 md:grid-cols-[120px_160px_1fr_auto]">
 
                         <span class="text-sm text-slate-400">
                             {{ $event->created_at->format('d M Y') }}
@@ -264,6 +262,16 @@
 
                         <span class="text-sm text-slate-600">
                             {{ $event->description }}
+                        </span>
+
+                        <span>
+                            <button
+                            type="button"
+                            wire:click="editEvent({{ $event->id }})"
+                            class="text-xs text-emerald-700 hover:text-emerald-900"
+                        >
+                            Edit
+                        </button>
                         </span>
 
                     </div>
@@ -380,4 +388,92 @@
 
     </div>
 
+    <x-modal name="edit-entry" :show="false" maxWidth="2xl">
+
+        <div class="p-6">
+
+            <h2 class="text-lg font-semibold text-slate-800">
+                Edit entry
+            </h2>
+
+            <p class="mt-1 text-sm text-slate-500">
+                Update this life check-in.
+            </p>
+
+            <form wire:submit="updateEvent" class="mt-6 space-y-4">
+
+                {{-- Life area --}}
+                <div>
+                    <label class="block text-sm font-medium text-slate-700">
+                        Life area
+                    </label>
+
+                    <select
+                        wire:model="life_area_id"
+                        class="mt-1 block w-full rounded-md border-slate-300"
+                    >
+                        <option value="">Select a life area</option>
+
+                        @foreach ($lifeAreas as $lifeArea)
+                            <option value="{{ $lifeArea->id }}">
+                                {{ $lifeArea->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+
+                {{-- Type --}}
+                <div>
+                    <label class="block text-sm font-medium text-slate-700">
+                        Type
+                    </label>
+
+                    <select
+                        wire:model="type"
+                        class="mt-1 block w-full rounded-md border-slate-300"
+                    >
+                        <option value="positive">Positive</option>
+                        <option value="neutral">Neutral</option>
+                        <option value="negative">Negative</option>
+                    </select>
+                </div>
+
+                {{-- Description --}}
+                <div>
+                    <label class="block text-sm font-medium text-slate-700">
+                        Description
+                    </label>
+
+                    <textarea
+                        wire:model="description"
+                        rows="4"
+                        class="mt-1 block w-full rounded-md border-slate-300"
+                    ></textarea>
+                </div>
+
+                {{-- Buttons --}}
+                <div class="flex justify-end gap-3 pt-4">
+
+                    <button
+                        type="button"
+                        x-on:click="$dispatch('close-modal', 'edit-entry')"
+                        class="rounded-md px-4 py-2 text-sm text-slate-600 hover:text-slate-900"
+                    >
+                        Cancel
+                    </button>
+
+                    <button
+                        type="submit"
+                        class="rounded-md bg-emerald-700 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-800"
+                    >
+                        Update
+                    </button>
+
+                </div>
+
+            </form>
+
+        </div>
+
+    </x-modal>
 </div>

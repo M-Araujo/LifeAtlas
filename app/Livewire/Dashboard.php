@@ -13,6 +13,8 @@ class Dashboard extends Component {
     public $type = 'neutral';
     public $search = '';
     public $searchLifeArea = '';
+    public $editingEvent = null;
+    public $editingEventId = null;
 
     public function saveRecord() {
         $validated = $this->validate([
@@ -60,5 +62,32 @@ class Dashboard extends Component {
             'stats' => $stats
         ])
             ->layout('components.layouts.app');
+    }
+
+    public function editEvent(Event $event) {
+        $this->editingEventId = $event->id;
+
+        $this->life_area_id = $event->life_area_id;
+        $this->description = $event->description;
+        $this->type = $event->type;
+
+        $this->dispatch('open-modal', 'edit-entry');
+    }
+
+    public function updateEvent() {
+        $validated = $this->validate([
+            'life_area_id' => 'required|exists:life_areas,id',
+            'description' => 'required|string|max:1000',
+            'type' => 'required|in:neutral,positive,negative',
+        ]);
+
+        $event = Event::findOrFail($this->editingEventId);
+
+        $event->update($validated);
+
+        $this->reset(['life_area_id', 'description', 'editingEventId']);
+        $this->type = 'neutral';
+
+        $this->dispatch('close-modal', 'edit-entry');
     }
 }
