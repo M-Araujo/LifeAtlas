@@ -15,6 +15,8 @@ class Dashboard extends Component {
     public $searchLifeArea = '';
     public $editingEvent = null;
     public $editingEventId = null;
+    public $deletingEventId = null;
+    public $deletingEventDescription = null;
 
     public function saveRecord() {
         $validated = $this->validate([
@@ -89,5 +91,21 @@ class Dashboard extends Component {
         $this->type = 'neutral';
 
         $this->dispatch('close-modal', 'edit-entry');
+    }
+
+    public function confirmDelete(Event $event) {
+        $this->deletingEventId = $event->id;
+        $this->deletingEventDescription = $event->description;
+        $this->dispatch('open-modal', 'delete-entry');
+    }
+
+    public function deleteEvent() {
+        $event = Event::findOrFail($this->deletingEventId);
+
+        $event->delete();
+
+        $this->reset(['deletingEventId', 'deletingEventDescription']);
+
+        $this->dispatch('close-modal', 'delete-entry');
     }
 }

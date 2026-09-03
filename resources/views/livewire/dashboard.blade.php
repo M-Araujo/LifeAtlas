@@ -250,7 +250,7 @@
             <div class="max-h-80 overflow-y-auto divide-y divide-slate-100">
                 @forelse ($events as $event)
 
-                <div class="grid gap-2 px-5 py-4 md:grid-cols-[120px_160px_1fr_auto]">
+                <div class="grid gap-2 px-5 py-4 md:grid-cols-[120px_160px_1fr_auto_auto]">
 
                         <span class="text-sm text-slate-400">
                             {{ $event->created_at->format('d M Y') }}
@@ -272,6 +272,16 @@
                         >
                             Edit
                         </button>
+                        </span>
+
+                        <span>
+                            <button
+    type="button"
+    wire:click="confirmDelete({{ $event->id }})"
+    class="text-xs text-red-700 hover:text-red-900"
+>
+    Delete
+</button>
                         </span>
 
                     </div>
@@ -472,6 +482,43 @@
                 </div>
 
             </form>
+
+        </div>
+
+    </x-modal>
+
+
+    <x-modal name="delete-entry" :show="false" maxWidth="md">
+
+        <div class="p-6">
+
+            <h2 class="text-lg font-semibold text-slate-800">
+                Delete entry
+            </h2>
+
+            <p class="mt-2 text-sm text-slate-500">
+                Are you sure you want to delete this entry {{ $this->deletingEventDescription }}? This action cannot be undone.
+            </p>
+
+            <div class="mt-6 flex justify-end gap-3">
+
+                <button
+                    type="button"
+                    x-on:click="$dispatch('close-modal', 'delete-entry')"
+                    class="rounded-md px-4 py-2 text-sm text-slate-600 hover:text-slate-900"
+                >
+                    Cancel
+                </button>
+
+                <button
+                    type="button"
+                    wire:click="deleteEvent"
+                    class="rounded-md bg-red-700 px-4 py-2 text-sm font-medium text-white hover:bg-red-800"
+                >
+                    Delete
+                </button>
+
+            </div>
 
         </div>
 
