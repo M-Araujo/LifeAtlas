@@ -21,7 +21,7 @@ class Dashboard extends Component {
     public function saveRecord() {
         $validated = $this->validate([
             'life_area_id' => 'required|exists:life_areas,id',
-            'description' => 'required|string|max:1000',
+            'description' => 'required|string|max:10000',
             'type' => 'required|in:neutral,positive,negative',
         ]);
 
@@ -58,6 +58,7 @@ class Dashboard extends Component {
             'neutral' => Event::where('type', 'neutral')->count(),
         ];
 
+
         return view('livewire.dashboard', [
             'events' => $events,
             'lifeAreas' => $lifeAreas,
@@ -79,7 +80,7 @@ class Dashboard extends Component {
     public function updateEvent() {
         $validated = $this->validate([
             'life_area_id' => 'required|exists:life_areas,id',
-            'description' => 'required|string|max:1000',
+            'description' => 'required|string|max:10000',
             'type' => 'required|in:neutral,positive,negative',
         ]);
 
