@@ -11,8 +11,6 @@ class Dashboard extends Component {
     public $life_area_id;
     public $description;
     public $type = 'neutral';
-    public $search = '';
-    public $searchLifeArea = '';
     public $editingEvent = null;
     public $editingEventId = null;
     public $deletingEventId = null;
@@ -32,17 +30,6 @@ class Dashboard extends Component {
     }
 
     public function render() {
-
-        $events = Event::with('lifeArea')
-            ->when($this->search, function ($query) {
-                $query->where('description', 'like', '%' . $this->search . '%');
-            })
-            ->when($this->searchLifeArea, function ($query) {
-                $query->where('life_area_id', $this->searchLifeArea);
-            })
-            ->orderBy('created_at', 'desc')
-            ->get();
-
         $lifeAreas = LifeArea::with('events')->get();
 
         $stats = [
@@ -60,7 +47,6 @@ class Dashboard extends Component {
 
 
         return view('livewire.dashboard', [
-            'events' => $events,
             'lifeAreas' => $lifeAreas,
             'stats' => $stats
         ])
