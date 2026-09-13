@@ -99,6 +99,53 @@
     </form>
 </section>
 
+{{-- This Week --}}
+<section class="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div class="flex items-start justify-between">
+            <p class="text-sm text-slate-500">Positive entries</p>
+            <svg class="h-5 w-5 text-emerald-700" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 19.5V4.5m0 0l-6 6m6-6l6 6" />
+            </svg>
+        </div>
+        <p class="mt-2 text-3xl font-semibold text-emerald-700">{{ $weeklyStats['positive'] }}</p>
+        <p class="mt-1 text-xs text-slate-400">This week</p>
+    </div>
+
+    <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div class="flex items-start justify-between">
+            <p class="text-sm text-slate-500">Neutral entries</p>
+            <svg class="h-5 w-5 text-slate-700" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 15.75h7.5M8.25 9.75h7.5M3.75 6.75A2.25 2.25 0 016 4.5h12a2.25 2.25 0 012.25 2.25v10.5A2.25 2.25 0 0118 19.5H6a2.25 2.25 0 01-2.25-2.25V6.75z" />
+            </svg>
+        </div>
+        <p class="mt-2 text-3xl font-semibold text-slate-700">{{ $weeklyStats['neutral'] }}</p>
+        <p class="mt-1 text-xs text-slate-400">This week</p>
+    </div>
+
+    <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div class="flex items-start justify-between">
+            <p class="text-sm text-slate-500">Negative entries</p>
+            <svg class="h-5 w-5 text-red-700" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m0 0l6-6m-6 6l-6-6" />
+            </svg>
+        </div>
+        <p class="mt-2 text-3xl font-semibold text-red-700">{{ $weeklyStats['negative'] }}</p>
+        <p class="mt-1 text-xs text-slate-400">This week</p>
+    </div>
+
+    <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div class="flex items-start justify-between">
+            <p class="text-sm text-slate-500">Total entries</p>
+            <svg class="h-5 w-5 text-slate-900" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6l4 2m4-2a8 8 0 11-16 0 8 8 0 0116 0z" />
+            </svg>
+        </div>
+        <p class="mt-2 text-3xl font-semibold text-slate-900">{{ $weeklyStats['total'] }}</p>
+        <p class="mt-1 text-xs text-slate-400">This week</p>
+    </div>
+</section>
+
 <x-modal name="edit-entry" :show="false" maxWidth="2xl">
     <div class="p-6">
         <h2 class="text-lg font-semibold text-slate-800">

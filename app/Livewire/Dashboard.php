@@ -30,9 +30,21 @@ class Dashboard extends Component {
 
     public function render() {
         $lifeAreas = LifeArea::get();
+        $thisWeek = Event::whereBetween('created_at', [
+            now()->startOfWeek(),
+            now()->endOfWeek(),
+        ]);
+
+        $weeklyStats = [
+            'positive' => (clone $thisWeek)->where('type', 'positive')->count(),
+            'neutral' => (clone $thisWeek)->where('type', 'neutral')->count(),
+            'negative' => (clone $thisWeek)->where('type', 'negative')->count(),
+            'total' => $thisWeek->count(),
+        ];
 
         return view('livewire.dashboard', [
             'lifeAreas' => $lifeAreas,
+            'weeklyStats' => $weeklyStats,
         ])
             ->layout('components.layouts.app');
     }
