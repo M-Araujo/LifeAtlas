@@ -2,9 +2,13 @@
 
 namespace App\Livewire;
 
+use App\Jobs\CreateBackup;
+use App\Models\Backup;
 use App\Models\Event;
 use Livewire\Component;
 use App\Models\LifeArea;
+use Illuminate\Database\QueryException;
+use Illuminate\Support\Facades\DB;
 
 class Dashboard extends Component {
     public $life_area_id;
@@ -14,6 +18,54 @@ class Dashboard extends Component {
     public $editingEventId = null;
     public $deletingEventId = null;
     public $deletingEventDescription = null;
+
+    public function mount(): void {
+        $backupId = $this->queueTodayBackup();
+
+        if ($backupId) {
+            CreateBackup::dispatch($backupId)->afterCommit();
+        }
+    }
+
+    private function queueTodayBackup(): ?int {
+        $backupDate = today()->toDateString();
+
+        try {
+            return DB::transaction(function () use ($backupDate) {
+                $backup = Backup::whereDate('backup_date', $backupDate)
+                    ->lockForUpdate()
+                    ->first();
+
+                if (! $backup) {
+                    return Backup::create([
+                        'backup_date' => $backupDate,
+                        'status' => Backup::STATUS_PENDING,
+                    ])->id;
+                }
+
+                if ($backup->status !== Backup::STATUS_FAILED) {
+                    return null;
+                }
+
+                $backup->update([
+                    'status' => Backup::STATUS_PENDING,
+                    'path' => null,
+                    'error_message' => null,
+                    'started_at' => null,
+                    'completed_at' => null,
+                ]);
+
+                return $backup->id;
+            });
+        } catch (QueryException $exception) {
+            // Another Dashboard request may have created today's backup first.
+            if (Backup::whereDate('backup_date', $backupDate)->exists()) {
+                return null;
+            }
+
+            throw $exception;
+        }
+    }
 
     public function saveRecord() {
         $validated = $this->validate([

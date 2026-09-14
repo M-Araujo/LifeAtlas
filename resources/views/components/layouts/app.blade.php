@@ -47,6 +47,8 @@
                     </div>
                 </nav>
 
+                <livewire:backup-status />
+
                 <!-- Page Heading -->
                 @if (isset($header))
                     <header class="mb-6">
