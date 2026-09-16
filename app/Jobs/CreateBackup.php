@@ -60,7 +60,7 @@ class CreateBackup implements ShouldQueue
         $finalFile = $disk->path($finalPath);
 
         try {
-            $disk->makeDirectory($directory);
+            $this->prepareBackupDirectory($disk->path($directory));
 
             $this->dumpDatabase($temporaryFile);
 
@@ -105,6 +105,23 @@ class CreateBackup implements ShouldQueue
         }
     }
 
+    private function prepareBackupDirectory(string $directory): void
+    {
+        if (! is_dir($directory) && ! @mkdir($directory, 0700, true) && ! is_dir($directory)) {
+            throw new RuntimeException('The private backup directory could not be created.');
+        }
+
+        if (! @chmod($directory, 0700)) {
+            throw new RuntimeException('The backup directory must be owned by the queue worker user with permissions 0700.');
+        }
+
+        clearstatcache(true, $directory);
+
+        if (! is_writable($directory)) {
+            throw new RuntimeException('The private backup directory is not writable by the queue worker user.');
+        }
+    }
+
     private function dumpDatabase(string $temporaryFile): void
     {
         $connection = config('database.connections.'.config('database.default'));
@@ -135,8 +152,25 @@ class CreateBackup implements ShouldQueue
             ->run($command);
 
         if (! $result->successful()) {
+            Log::error('LifeAtlas MariaDB dump command failed.', [
+                'backup_id' => $this->backupId,
+                'exit_code' => $result->exitCode(),
+                'stderr' => $this->sanitizeDumpError($result->errorOutput()),
+            ]);
+
             throw new RuntimeException('The MariaDB dump command failed.');
         }
+    }
+
+    private function sanitizeDumpError(string $stderr): string
+    {
+        // Keep only recognized diagnostic phrases and numeric error codes.
+        // Raw stderr can contain credentials, connection URLs, or database contents.
+        preg_match_all('/\b(?:Permission denied|Access denied|No such file or directory|No space left on device|Read-only file system|Unknown database|Unknown server host|Connection refused|Lost connection|Server has gone away|Can\x27t connect|Can\x27t create\/write to file|Errcode: ?[0-9]+|Got error: ?[0-9]+)\b/i', $stderr, $matches);
+
+        return $matches[0]
+            ? implode('; ', array_unique($matches[0])).'; [remaining stderr redacted]'
+            : '[stderr redacted: no recognized diagnostic]';
     }
 
     private function pruneCompletedBackups($disk): void
