@@ -5,21 +5,21 @@ namespace App\Livewire;
 use App\Jobs\CreateBackup;
 use App\Models\Backup;
 use App\Models\Event;
-use Livewire\Component;
 use App\Models\LifeArea;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
+use Livewire\Component;
 
-class Dashboard extends Component {
+class Dashboard extends Component
+{
     public $life_area_id;
-    public $description;
-    public $type = 'neutral';
-    public $editingEvent = null;
-    public $editingEventId = null;
-    public $deletingEventId = null;
-    public $deletingEventDescription = null;
 
-    public function mount(): void {
+    public $description;
+
+    public $type = 'neutral';
+
+    public function mount(): void
+    {
         $backupId = $this->queueTodayBackup();
 
         if ($backupId) {
@@ -27,7 +27,8 @@ class Dashboard extends Component {
         }
     }
 
-    private function queueTodayBackup(): ?int {
+    private function queueTodayBackup(): ?int
+    {
         $backupDate = today()->toDateString();
 
         try {
@@ -67,7 +68,8 @@ class Dashboard extends Component {
         }
     }
 
-    public function saveRecord() {
+    public function saveRecord()
+    {
         $validated = $this->validate([
             'life_area_id' => 'required|exists:life_areas,id',
             'description' => 'required|string|max:10000',
@@ -80,7 +82,8 @@ class Dashboard extends Component {
         $this->type = 'neutral';
     }
 
-    public function render() {
+    public function render()
+    {
         $lifeAreas = LifeArea::get();
         $thisWeek = Event::whereBetween('created_at', [
             now()->startOfWeek(),
@@ -99,48 +102,5 @@ class Dashboard extends Component {
             'weeklyStats' => $weeklyStats,
         ])
             ->layout('components.layouts.app');
-    }
-
-    public function editEvent(Event $event) {
-        $this->editingEventId = $event->id;
-
-        $this->life_area_id = $event->life_area_id;
-        $this->description = $event->description;
-        $this->type = $event->type;
-
-        $this->dispatch('open-modal', 'edit-entry');
-    }
-
-    public function updateEvent() {
-        $validated = $this->validate([
-            'life_area_id' => 'required|exists:life_areas,id',
-            'description' => 'required|string|max:10000',
-            'type' => 'required|in:neutral,positive,negative',
-        ]);
-
-        $event = Event::findOrFail($this->editingEventId);
-
-        $event->update($validated);
-
-        $this->reset(['life_area_id', 'description', 'editingEventId']);
-        $this->type = 'neutral';
-
-        $this->dispatch('close-modal', 'edit-entry');
-    }
-
-    public function confirmDelete(Event $event) {
-        $this->deletingEventId = $event->id;
-        $this->deletingEventDescription = $event->description;
-        $this->dispatch('open-modal', 'delete-entry');
-    }
-
-    public function deleteEvent() {
-        $event = Event::findOrFail($this->deletingEventId);
-
-        $event->delete();
-
-        $this->reset(['deletingEventId', 'deletingEventDescription']);
-
-        $this->dispatch('close-modal', 'delete-entry');
     }
 }
