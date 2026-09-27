@@ -21,7 +21,7 @@
 
                 <!-- Navigation -->
                 <nav class="mb-6 rounded-xl border border-slate-200 bg-white shadow-sm">
-                    <div class="flex h-16 items-center justify-between px-6">
+                    <div class="flex min-h-16 flex-wrap items-center justify-between gap-4 px-6 py-4">
 
                         <!-- Logo -->
                         <a href="{{ route('dashboard') }}"
@@ -30,7 +30,7 @@
                         </a>
 
                         <!-- Menu -->
-                        <div class="flex gap-6">
+                        <div class="flex flex-wrap gap-6">
                             <a href="{{ route('dashboard') }}">
                                 Dashboard
                             </a>
@@ -41,6 +41,9 @@
 
                             <a href="{{ route('stats') }}">
                                 Statistics
+                            </a>
+                            <a href="{{ route('daily-practice') }}">
+                                Bruce's Practice
                             </a>
                         </div>
 

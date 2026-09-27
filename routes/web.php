@@ -1,9 +1,10 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
+use App\Livewire\DailyPractice;
 use App\Livewire\Dashboard;
 use App\Livewire\History;
 use App\Livewire\Stats;
+use Illuminate\Support\Facades\Route;
 
 Route::get('/', Dashboard::class)
     ->name('dashboard');
@@ -14,5 +15,7 @@ Route::get('/history', History::class)
 Route::get('/stats', Stats::class)
     ->name('stats');
 
+Route::get('/daily-practice', DailyPractice::class)
+    ->name('daily-practice');
 
-require __DIR__ . '/auth.php';
+require __DIR__.'/auth.php';
