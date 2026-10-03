@@ -14,9 +14,6 @@ use Livewire\Component;
 
 class DailyPractice extends Component
 {
-    #[Locked]
-    public int $practiceId;
-
     public string $newIssue = '';
 
     public array $drafts = [];
@@ -24,39 +21,31 @@ class DailyPractice extends Component
     #[Locked]
     public array $editingIds = [];
 
-    public function mount(): void
-    {
-        $this->refreshPractice();
-    }
-
     private function today(): string
     {
         return CarbonImmutable::today('Europe/Lisbon')->toDateString();
     }
 
-    private function refreshPractice(): void
+    private function createPractice(): Practice
     {
-        // The unique date and createOrFirst handle concurrent first visits.
-        $practice = Practice::where('practice_date', $this->today())->first();
-        if (! $practice) {
-            $principle = Principle::where('active', true)->whereNotNull('verified_at')
-                ->where('verified_at', '<=', now())
-                ->whereRaw("TRIM(text) <> ''")->whereRaw("TRIM(source_reference) <> ''")
-                ->inRandomOrder()->first();
-            $practice = Practice::query()->createOrFirst(
-                ['practice_date' => $this->today()],
-                ['principle_id' => $principle?->id],
-            );
-        }
-        $this->practiceId = $practice->id;
+        $principle = Principle::where('active', true)->whereNotNull('verified_at')
+            ->where('verified_at', '<=', now())
+            ->whereRaw("TRIM(text) <> ''")->whereRaw("TRIM(source_reference) <> ''")
+            ->inRandomOrder()->first();
+
+        return Practice::create([
+            'practice_date' => $this->today(),
+            'principle_id' => $principle?->id,
+        ]);
     }
 
     public function addImprovement(): void
     {
         $this->newIssue = trim($this->newIssue);
         $this->validate(['newIssue' => ['required', 'string', 'max:10000']]);
-        $this->refreshPractice();
-        Practice::findOrFail($this->practiceId)->improvements()->create(['issue' => $this->newIssue]);
+        DB::transaction(function () {
+            $this->createPractice()->improvements()->create(['issue' => $this->newIssue]);
+        });
         $this->reset('newIssue');
     }
 
@@ -118,10 +107,8 @@ class DailyPractice extends Component
 
     public function render()
     {
-        $this->refreshPractice();
-
         return view('livewire.daily-practice', [
-            'practice' => Practice::with('principle')->findOrFail($this->practiceId),
+            'practice' => new Practice(['practice_date' => $this->today()]),
             'items' => $this->activeItems()->with('practice')->orderByDesc('created_at')->orderByDesc('id')->get(),
             'statuses' => DailyImprovement::STATUSES,
         ])->layout('components.layouts.app');

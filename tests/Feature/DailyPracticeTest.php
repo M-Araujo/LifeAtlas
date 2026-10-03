@@ -8,7 +8,6 @@ use App\Models\DailyImprovement;
 use App\Models\DailyPractice as Practice;
 use App\Models\Principle;
 use Carbon\Carbon;
-use Illuminate\Database\QueryException;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -37,40 +36,49 @@ class DailyPracticeTest extends TestCase
         $component = Livewire::test(DailyPractice::class);
         $this->assertSame(1, substr_count($component->html(), 'wire:submit="addImprovement"'));
         $this->assertDatabaseCount('daily_improvements', 0);
+        $component->call('$refresh');
+        $this->assertDatabaseCount('daily_practices', 0);
         $this->assertFalse(Schema::hasColumn('daily_practices', 'honest_expression'));
         $this->assertFalse(Schema::hasColumn('daily_practices', 'improvements_created'));
         $this->assertFalse(Schema::hasColumn('daily_improvements', 'position'));
     }
 
-    public function test_daily_practice_is_unique_and_midnight_add_uses_current_lisbon_date(): void
+    public function test_midnight_add_uses_current_lisbon_date(): void
     {
         $this->travelTo(Carbon::parse('2026-09-26 22:59:00', 'UTC'));
         $component = Livewire::test(DailyPractice::class);
-        Livewire::test(DailyPractice::class)->assertSet('practiceId', $component->get('practiceId'));
+        $component->set('newIssue', 'Before midnight')->call('addImprovement')->assertHasNoErrors();
         $this->assertDatabaseCount('daily_practices', 1);
         $component->set('newIssue', 'Across midnight');
         $this->travelTo(Carbon::parse('2026-09-26 23:01:00', 'UTC'));
         $component->call('addImprovement')->assertHasNoErrors();
-        $this->assertSame('2026-09-27', DailyImprovement::first()->practice->practice_date->toDateString());
+        $this->assertSame('2026-09-27', DailyImprovement::latest('id')->first()->practice->practice_date->toDateString());
         $this->assertDatabaseCount('daily_practices', 2);
     }
 
-    public function test_dst_changes_keep_one_practice_per_lisbon_date(): void
+    public function test_dst_changes_allow_multiple_practices_on_the_correct_lisbon_date(): void
     {
         foreach (['2026-03-29', '2026-10-25'] as $date) {
             $this->travelTo(Carbon::parse($date.' 00:30:00', 'UTC'));
-            $id = Livewire::test(DailyPractice::class)->get('practiceId');
+            $component = Livewire::test(DailyPractice::class);
+            $component->set('newIssue', 'First practice')->call('addImprovement')->assertHasNoErrors();
             $this->travelTo(Carbon::parse($date.' 02:30:00', 'UTC'));
-            Livewire::test(DailyPractice::class)->assertSet('practiceId', $id);
+            $component->set('newIssue', 'Second practice')->call('addImprovement')->assertHasNoErrors();
+            $this->assertSame(2, Practice::where('practice_date', $date)->count());
         }
-        $this->assertDatabaseCount('daily_practices', 2);
+        $this->assertDatabaseCount('daily_practices', 4);
     }
 
-    public function test_duplicate_dates_are_rejected_by_database(): void
+    public function test_migration_allows_duplicate_dates_and_preserves_existing_improvements(): void
     {
-        Livewire::test(DailyPractice::class);
-        $this->expectException(QueryException::class);
+        $item = $this->item('2026-09-26', ['solution' => 'Keep this solution']);
+        $migration = require database_path('migrations/2026_10_02_000001_allow_multiple_daily_practices_per_date.php');
+        $migration->down();
+        $migration->up();
         Practice::create(['practice_date' => '2026-09-26']);
+        $this->assertDatabaseCount('daily_practices', 2);
+        $this->assertSame('Keep this solution', $item->fresh()->solution);
+        $this->assertSame($item->daily_practice_id, $item->fresh()->daily_practice_id);
     }
 
     public function test_only_verified_active_principles_are_selected_and_stable(): void
@@ -81,34 +89,41 @@ class DailyPracticeTest extends TestCase
         $this->principle(['verified_at' => now()->addDay()]);
         $this->principle(['source_reference' => '']);
         $this->principle(['text' => ' ']);
-        Livewire::test(DailyPractice::class)->assertSee('Synthetic principle')->assertSee('Synthetic reference');
+        $component = Livewire::test(DailyPractice::class)->assertDontSee('Daily Bruce Lee principle')
+            ->assertDontSee('Synthetic principle')->assertDontSee('Synthetic reference');
+        $component->set('newIssue', 'First practice')->call('addImprovement')->assertHasNoErrors();
         $this->assertSame($eligible->id, Practice::first()->principle_id);
         $this->principle(['text' => 'Another principle']);
-        Livewire::test(DailyPractice::class)->assertSee('Synthetic principle');
+        $component->call('$refresh')->assertDontSee('Synthetic principle');
         $this->assertSame($eligible->id, Practice::first()->principle_id);
     }
 
     public function test_no_verified_principle_has_a_safe_stable_empty_state(): void
     {
         $this->principle(['verified_at' => null]);
-        Livewire::test(DailyPractice::class)->assertSee('No daily principle available.')
+        Livewire::test(DailyPractice::class)->assertDontSee('Daily Bruce Lee principle')
+            ->assertDontSee('No daily principle available.')
             ->set('newIssue', 'Still usable')->call('addImprovement')->assertHasNoErrors();
         $this->principle();
-        Livewire::test(DailyPractice::class)->assertSee('No daily principle available.');
+        Livewire::test(DailyPractice::class)->assertDontSee('No daily principle available.');
     }
 
     public function test_multiple_improvements_are_created_independently_without_solutions_or_a_limit(): void
     {
+        $component = Livewire::test(DailyPractice::class);
         for ($number = 1; $number <= 6; $number++) {
-            Livewire::test(DailyPractice::class)->set('newIssue', "Issue $number")
+            $component->set('newIssue', "Issue $number")
                 ->call('addImprovement')->assertHasNoErrors()->assertSet('newIssue', '')
                 ->assertSee("Issue $number")->assertSee('No solution yet');
             $this->assertDatabaseCount('daily_improvements', $number);
+            $this->assertDatabaseCount('daily_practices', $number);
             $this->assertDatabaseHas('daily_improvements', [
                 'issue' => "Issue $number", 'solution' => null, 'status' => 'identified', 'resolved_at' => null,
             ]);
         }
         Livewire::test(DailyPractice::class)->assertViewHas('items', fn ($items) => $items->count() === 6);
+        $this->assertSame(6, DailyImprovement::distinct()->count('daily_practice_id'));
+        $this->assertSame(6, Practice::where('practice_date', '2026-09-26')->count());
     }
 
     public function test_active_list_includes_today_and_older_items_newest_first_and_excludes_resolved_and_future(): void
@@ -211,6 +226,7 @@ class DailyPracticeTest extends TestCase
     public function test_validation_rejects_blank_issues_and_invalid_status(): void
     {
         Livewire::test(DailyPractice::class)->set('newIssue', '   ')->call('addImprovement')->assertHasErrors('newIssue');
+        $this->assertDatabaseCount('daily_practices', 0);
         $item = $this->item('2026-09-26');
         Livewire::test(DailyPractice::class)->call('editImprovement', $item->id)
             ->set("drafts.$item->id.issue", ' ')->set("drafts.$item->id.status", 'invalid')

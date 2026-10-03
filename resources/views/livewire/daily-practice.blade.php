@@ -7,19 +7,6 @@
 
     <div class="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
         <div class="space-y-4">
-            <section aria-labelledby="principle-heading" class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-                <h2 id="principle-heading" class="font-semibold text-slate-900">Daily Bruce Lee principle</h2>
-                @if ($practice->principle)
-                    <blockquote class="mt-3 whitespace-pre-wrap text-slate-700">{{ $practice->principle->text }}</blockquote>
-                    <p class="mt-3 text-sm text-slate-500">Source: {{ $practice->principle->source_reference }}</p>
-                    @if ($practice->principle->source_url && in_array(strtolower(parse_url($practice->principle->source_url, PHP_URL_SCHEME) ?? ''), ['http', 'https']))
-                        <a href="{{ $practice->principle->source_url }}" target="_blank" rel="noopener noreferrer" class="mt-2 inline-block text-sm text-emerald-700 underline">View source</a>
-                    @endif
-                @else
-                    <p class="mt-3 text-sm text-slate-600">No daily principle available. You can still use the rest of your practice.</p>
-                @endif
-            </section>
-
             <section aria-labelledby="water-heading" class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
                 <h2 id="water-heading" class="font-semibold text-slate-900">Water and adaptability</h2>
                 <p class="mt-2 text-sm text-slate-600">Pause to breathe and refocus. Picture water adapting to its surroundings, and consider where you could respond with more flexibility today.</p>
