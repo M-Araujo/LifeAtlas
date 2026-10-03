@@ -2,21 +2,18 @@
 
 <div>
 <header class="mb-6">
-    <p class="text-sm font-medium text-emerald-700">
-        Personal dashboard
-    </p>
-
     <h1 class="text-3xl font-semibold tracking-tight text-slate-900">
         Life check-ins
     </h1>
 
-    <p class="mt-1 text-sm text-slate-500">
+    <p class="mt-2 text-sm text-slate-600">
         Track an area, search your history, and see the balance.
     </p>
 </header>
 
+<div class="grid items-start gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] xl:grid-cols-[minmax(0,7fr)_minmax(0,3fr)]">
 {{-- Add Entry --}}
-<section class="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+<section class="min-w-0 self-start rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
     <div class="mb-5">
         <h2 class="font-semibold text-slate-900">
             Add entry
@@ -78,9 +75,9 @@
 
             <textarea
                 wire:model="description"
-                rows="3"
+                rows="6"
                 placeholder="What shaped this moment?"
-                class="w-full resize-none rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm"
+                class="w-full resize-y rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm"
             ></textarea>
             @error('description')
                 <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
@@ -100,8 +97,13 @@
 </section>
 
 {{-- This Week --}}
-<section class="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-    <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+<section aria-labelledby="weekly-summary-heading" class="min-w-0 self-start rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+    <div class="mb-5">
+        <h2 id="weekly-summary-heading" class="font-semibold text-slate-900">This week</h2>
+        <p class="text-sm text-slate-500">Your check-ins at a glance.</p>
+    </div>
+    <div class="grid gap-4 sm:grid-cols-2">
+    <div class="rounded-xl border border-emerald-100 bg-emerald-50/50 p-5 shadow-sm">
         <div class="flex items-start justify-between">
             <p class="text-sm text-slate-500">Positive entries</p>
             <svg class="h-5 w-5 text-emerald-700" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
@@ -109,10 +111,9 @@
             </svg>
         </div>
         <p class="mt-2 text-3xl font-semibold text-emerald-700">{{ $weeklyStats['positive'] }}</p>
-        <p class="mt-1 text-xs text-slate-400">This week</p>
     </div>
 
-    <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+    <div class="rounded-xl border border-slate-200 bg-slate-50 p-5 shadow-sm">
         <div class="flex items-start justify-between">
             <p class="text-sm text-slate-500">Neutral entries</p>
             <svg class="h-5 w-5 text-slate-700" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
@@ -120,10 +121,9 @@
             </svg>
         </div>
         <p class="mt-2 text-3xl font-semibold text-slate-700">{{ $weeklyStats['neutral'] }}</p>
-        <p class="mt-1 text-xs text-slate-400">This week</p>
     </div>
 
-    <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+    <div class="rounded-xl border border-red-100 bg-red-50/50 p-5 shadow-sm">
         <div class="flex items-start justify-between">
             <p class="text-sm text-slate-500">Negative entries</p>
             <svg class="h-5 w-5 text-red-700" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
@@ -131,10 +131,9 @@
             </svg>
         </div>
         <p class="mt-2 text-3xl font-semibold text-red-700">{{ $weeklyStats['negative'] }}</p>
-        <p class="mt-1 text-xs text-slate-400">This week</p>
     </div>
 
-    <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+    <div class="rounded-xl border border-stone-200 bg-stone-50 p-5 shadow-sm">
         <div class="flex items-start justify-between">
             <p class="text-sm text-slate-500">Total entries</p>
             <svg class="h-5 w-5 text-slate-900" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
@@ -142,8 +141,9 @@
             </svg>
         </div>
         <p class="mt-2 text-3xl font-semibold text-slate-900">{{ $weeklyStats['total'] }}</p>
-        <p class="mt-1 text-xs text-slate-400">This week</p>
+    </div>
     </div>
 </section>
+</div>
 
 </div>

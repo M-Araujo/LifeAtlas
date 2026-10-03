@@ -1,8 +1,7 @@
 <div>
     <header class="mb-6">
-        <p class="text-sm font-medium text-emerald-700">Personal dashboard</p>
-        <h1 class="text-3xl font-semibold tracking-tight text-slate-900">Stats</h1>
-        <p class="mt-1 text-sm text-slate-500">Explore patterns in your recorded check-ins.</p>
+        <h1 class="text-3xl font-semibold tracking-tight text-slate-900">Statistics</h1>
+        <p class="mt-2 text-sm text-slate-600">Explore patterns in your recorded check-ins.</p>
     </header>
 
     <section aria-label="Date range" class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">

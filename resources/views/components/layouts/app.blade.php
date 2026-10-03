@@ -20,31 +20,28 @@
             <div class="mx-auto max-w-6xl">
 
                 <!-- Navigation -->
-                <nav class="mb-6 rounded-xl border border-slate-200 bg-white shadow-sm">
-                    <div class="flex min-h-16 flex-wrap items-center justify-between gap-4 px-6 py-4">
+                <nav aria-label="Primary" class="mb-6 rounded-xl border border-slate-200 bg-white shadow-sm">
+                    <div class="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 px-4 py-3 sm:px-5">
 
                         <!-- Logo -->
                         <a href="{{ route('dashboard') }}"
-                           class="text-xl font-semibold text-slate-900">
-                            Life Atlas
+                           class="shrink-0 rounded-md text-xl font-semibold tracking-tight text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 focus-visible:ring-offset-2">
+                            LifeAtlas
                         </a>
 
                         <!-- Menu -->
-                        <div class="flex flex-wrap gap-6">
-                            <a href="{{ route('dashboard') }}">
-                                Dashboard
-                            </a>
-
-                            <a href="{{ route('history') }}">
-                                History
-                            </a>
-
-                            <a href="{{ route('stats') }}">
-                                Statistics
-                            </a>
-                            <a href="{{ route('daily-practice') }}">
-                                Bruce's Practice
-                            </a>
+                        <div class="flex w-full flex-wrap gap-1 sm:w-auto">
+                            @foreach (['dashboard' => 'Dashboard', 'history' => 'History', 'stats' => 'Statistics', 'daily-practice' => "Bruce's Practice"] as $routeName => $label)
+                                <a href="{{ route($routeName) }}"
+                                   @if (request()->routeIs($routeName)) aria-current="page" @endif
+                                   @class([
+                                       'rounded-lg px-3 py-2 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 focus-visible:ring-offset-2',
+                                       'bg-emerald-50 text-emerald-900 hover:bg-emerald-100' => request()->routeIs($routeName),
+                                       'text-slate-600 hover:bg-stone-100 hover:text-slate-900' => ! request()->routeIs($routeName),
+                                   ])>
+                                    {{ $label }}
+                                </a>
+                            @endforeach
                         </div>
 
                     </div>
