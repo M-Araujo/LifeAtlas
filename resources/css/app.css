@@ -1,3 +1,50 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Shared decorative background; content stays above this isolated layer. */
+.life-atlas-shell {
+    --shell-background: #f5f5f4; /* stone-100 */
+    --contour-opacity: 0.12;
+    --contour-height: 480px;
+    --contour-fade-start: 12%;
+    --contour-fade-end: 100%;
+    --contour-size: max(100%, 1440px) auto;
+    --contour-position: center top;
+
+    background-color: var(--shell-background);
+    position: relative;
+    isolation: isolate;
+}
+
+.life-atlas-shell::before {
+    content: "";
+    position: absolute;
+    z-index: -1;
+    inset: 0 0 auto;
+    height: var(--contour-height);
+    max-height: 100%;
+    pointer-events: none;
+    opacity: var(--contour-opacity);
+    background-image: url('../images/upper-contours.svg');
+    background-repeat: no-repeat;
+    background-size: var(--contour-size);
+    background-position: var(--contour-position);
+    -webkit-mask-image: linear-gradient(to bottom, black var(--contour-fade-start), transparent var(--contour-fade-end));
+    mask-image: linear-gradient(to bottom, black var(--contour-fade-start), transparent var(--contour-fade-end));
+}
+
+/* Crop one outer contour group rather than compressing both into a narrow screen. */
+@media (max-width: 639px) {
+    .life-atlas-shell {
+        --contour-height: 360px;
+        --contour-size: 1440px auto;
+        --contour-position: left -100px top -40px;
+    }
+}
+
+@media print, (forced-colors: active) {
+    .life-atlas-shell::before {
+        display: none;
+    }
+}
