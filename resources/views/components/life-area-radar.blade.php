@@ -26,10 +26,17 @@
                 'lines' => explode("\n", wordwrap($area['name'], 14, "\n", true)),
             ]);
         });
+        // Crop only unused bottom space; include multiline baselines and hit areas.
+        $labelBottom = $points->max(fn ($point) => $point['labelY'] + (count($point['lines']) - 1) * 8 + 20);
+        $geometryBottom = $axes->count() >= 3
+            ? max($center, $points->max('edgeY')) + 1
+            : $center + $radius + 1;
+        $hitAreaBottom = $points->max(fn ($point) => $point['y'] + 16);
+        $viewHeight = ceil(max($labelBottom, $geometryBottom, $hitAreaBottom, $center + 14 + 20) - 30);
     @endphp
     <div class="mt-4" x-data="{ tooltip: '' }" wire:key="radar-{{ md5(json_encode($areas)) }}">
         <div class="overflow-x-auto">
-            <svg viewBox="0 0 {{ $size }} {{ $size }}" class="mx-auto block w-full"
+            <svg viewBox="30 30 {{ $size - 60 }} {{ $viewHeight }}" preserveAspectRatio="xMidYMin meet" class="mx-auto block h-auto w-full"
                 style="max-width: {{ $size }}px; min-width: {{ min($size, max(320, $axes->count() * 42)) }}px"
                 role="group" aria-label="Life Area radar chart. Distance from the center represents positive-entry count.">
                 @for ($ring = 1; $ring <= 4; $ring++)
