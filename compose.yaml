@@ -20,6 +20,11 @@ services:
             IGNITION_LOCAL_SITES_PATH: '${PWD}'
         volumes:
             - '.:/var/www/html'
+            - type: volume
+              source: sail-node-modules
+              target: /var/www/html/node_modules
+              volume:
+                  nocopy: true
         networks:
             - sail
         depends_on:
@@ -46,6 +51,11 @@ services:
             - --timeout=660
         volumes:
             - '.:/var/www/html'
+            - type: volume
+              source: sail-node-modules
+              target: /var/www/html/node_modules
+              volume:
+                  nocopy: true
         networks:
             - sail
         depends_on:
@@ -82,4 +92,6 @@ networks:
         driver: bridge
 volumes:
     sail-mariadb:
+        driver: local
+    sail-node-modules:
         driver: local
