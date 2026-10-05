@@ -17,5 +17,3 @@ Route::get('/stats', Stats::class)
 
 Route::get('/daily-practice', DailyPractice::class)
     ->name('daily-practice');
-
-require __DIR__.'/auth.php';
