@@ -30,6 +30,15 @@ return [
 
     'disks' => [
 
+        'backups' => [
+            'driver' => 'local',
+            'root' => env('BACKUP_STORAGE_ROOT', '/var/lib/lifeatlas'),
+            'permission_mode' => env('BACKUP_PERMISSION_MODE', 'host'),
+            'visibility' => 'private',
+            'throw' => false,
+            'report' => false,
+        ],
+
         'local' => [
             'driver' => 'local',
             'root' => storage_path('app/private'),

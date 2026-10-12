@@ -8,14 +8,14 @@ use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Storage;
 use ReflectionMethod;
 use RuntimeException;
-use Tests\TestCase;
+use Tests\Support\IsolatedBackupTestCase;
 
-class BackupRuntimeTest extends TestCase
+class BackupRuntimeTest extends IsolatedBackupTestCase
 {
-    public function test_backup_directory_is_created_private_and_existing_files_are_untouched(): void
+    public function test_posix_directory_is_private_and_existing_files_are_untouched(): void
     {
-        Storage::fake('local');
-        $directory = Storage::disk('local')->path('backups');
+        config(['filesystems.disks.backups.permission_mode' => 'posix']);
+        $directory = Storage::disk('backups')->path('backups');
         $method = new ReflectionMethod(CreateBackup::class, 'prepareBackupDirectory');
         $job = new CreateBackup(3);
         $method->invoke($job, $directory);

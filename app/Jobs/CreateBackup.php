@@ -46,7 +46,6 @@ class CreateBackup implements ShouldQueue
             'error_message' => null,
         ]);
 
-        $disk = Storage::disk('local');
         $directory = 'backups';
 
         $filename = sprintf(
@@ -56,11 +55,29 @@ class CreateBackup implements ShouldQueue
         );
         $temporaryPath = $directory.'/.'.$filename.'.tmp';
         $finalPath = $directory.'/'.$filename;
-        $temporaryFile = $disk->path($temporaryPath);
-        $finalFile = $disk->path($finalPath);
+        $temporaryFile = null;
 
         try {
+            $root = config('filesystems.disks.backups.root');
+            $resolvedRoot = is_string($root) ? realpath($root) : false;
+            $repository = realpath(base_path());
+
+            if (! $resolvedRoot || ! $repository || $resolvedRoot === $repository
+                || str_starts_with($resolvedRoot, $repository.DIRECTORY_SEPARATOR)) {
+                throw new RuntimeException('The backup storage root must exist outside the repository.');
+            }
+
+            $disk = Storage::disk('backups');
+            $resolvedDirectory = realpath($disk->path($directory));
+
+            if ($resolvedDirectory && ($resolvedDirectory === $repository
+                || str_starts_with($resolvedDirectory, $repository.DIRECTORY_SEPARATOR))) {
+                throw new RuntimeException('The backup directory must be outside the repository.');
+            }
+
             $this->prepareBackupDirectory($disk->path($directory));
+            $temporaryFile = $disk->path($temporaryPath);
+            $finalFile = $disk->path($finalPath);
 
             $this->dumpDatabase($temporaryFile);
 
@@ -88,7 +105,7 @@ class CreateBackup implements ShouldQueue
                 ]);
             }
         } catch (Throwable $exception) {
-            if (is_file($temporaryFile)) {
+            if ($temporaryFile !== null && is_file($temporaryFile)) {
                 unlink($temporaryFile);
             }
 
@@ -107,11 +124,17 @@ class CreateBackup implements ShouldQueue
 
     private function prepareBackupDirectory(string $directory): void
     {
-        if (! is_dir($directory) && ! @mkdir($directory, 0700, true) && ! is_dir($directory)) {
-            throw new RuntimeException('The private backup directory could not be created.');
+        $mode = config('filesystems.disks.backups.permission_mode');
+
+        if (! in_array($mode, ['host', 'posix'], true)) {
+            throw new RuntimeException('The backup permission mode must be host or posix.');
         }
 
-        if (! @chmod($directory, 0700)) {
+        if (! is_dir($directory)) {
+            throw new RuntimeException('The external backup directory must already exist.');
+        }
+
+        if ($mode === 'posix' && ! @chmod($directory, 0700)) {
             throw new RuntimeException('The backup directory must be owned by the queue worker user with permissions 0700.');
         }
 

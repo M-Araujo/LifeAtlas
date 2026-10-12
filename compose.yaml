@@ -18,8 +18,15 @@ services:
             XDEBUG_MODE: '${SAIL_XDEBUG_MODE:-off}'
             XDEBUG_CONFIG: '${SAIL_XDEBUG_CONFIG:-client_host=host.docker.internal}'
             IGNITION_LOCAL_SITES_PATH: '${PWD}'
+            BACKUP_STORAGE_ROOT: /var/lib/lifeatlas
+            BACKUP_PERMISSION_MODE: '${BACKUP_PERMISSION_MODE:-host}'
         volumes:
             - '.:/var/www/html'
+            - type: bind
+              source: '${BACKUP_HOST_PATH:?Set BACKUP_HOST_PATH to an existing external backup directory}'
+              target: /var/lib/lifeatlas/backups
+              bind:
+                  create_host_path: false
             - type: volume
               source: sail-node-modules
               target: /var/www/html/node_modules
@@ -41,6 +48,8 @@ services:
             WWWUSER: '${WWWUSER}'
             LARAVEL_SAIL: 1
             SUPERVISOR_PHP_USER: sail
+            BACKUP_STORAGE_ROOT: /var/lib/lifeatlas
+            BACKUP_PERMISSION_MODE: '${BACKUP_PERMISSION_MODE:-host}'
         command:
             - php
             - artisan
@@ -51,6 +60,11 @@ services:
             - --timeout=660
         volumes:
             - '.:/var/www/html'
+            - type: bind
+              source: '${BACKUP_HOST_PATH:?Set BACKUP_HOST_PATH to an existing external backup directory}'
+              target: /var/lib/lifeatlas/backups
+              bind:
+                  create_host_path: false
             - type: volume
               source: sail-node-modules
               target: /var/www/html/node_modules

@@ -25,7 +25,7 @@ I am also studying AI and Deep Learning and exploring how LLM-assisted tools can
 - **Dashboard:** create check-ins and view current-week totals by classification.
 - **History:** combine description search, date presets, and Life Area filters; browse paginated results; edit entries or confirm their deletion.
 - **Statistics:** apply custom date ranges to summary counts, type percentages, Life Area rankings, and a positive-entry radar chart.
-- **Local database backups:** Dashboard use triggers the daily backup decision. Eligible backups run in the background, with visible status and retention of the latest five completed backups.
+- **Local database backups:** Dashboard use triggers the daily backup decision. Eligible backups run in the background to an external host directory, with visible status and retention of the latest five completed backups.
 
 ## Engineering highlights
 
@@ -129,7 +129,7 @@ My ongoing AI and Deep Learning studies complement this practical use by deepeni
 
 LifeAtlas V1 is intentionally designed for local, single-user use. Its implemented scope focuses on check-ins, History, Statistics, and local data protection.
 
-Daily backups are triggered through Dashboard use and stored locally. The radar provides a visual comparison of positive-entry frequency across Life Areas; it is not a scientifically validated wellbeing metric.
+Daily backups are triggered through Dashboard use and stored locally outside the repository. The radar provides a visual comparison of positive-entry frequency across Life Areas; it is not a scientifically validated wellbeing metric.
 
 The environment documented here is for local use.
 
@@ -161,6 +161,8 @@ Copy-Item .env.example .env
 ```
 
 Configure MariaDB to use the Docker service host `mariadb`. Set the queue connection to `database` and `DB_QUEUE_RETRY_AFTER` to `720`, exceeding the worker’s 660-second timeout. Keep local credentials in `.env`.
+
+Before starting services, complete the external backup setup below. For an existing installation, complete the manual migration before enabling the new storage.
 
 ### 2. Install PHP dependencies
 
@@ -208,6 +210,73 @@ docker compose exec laravel.test composer test
 ```
 
 This clears cached configuration and runs the suite using the in-memory SQLite test configuration.
+
+## External backup storage
+
+Backups remain private and local on your computer, outside the repository. They use the private Laravel `backups` disk rooted at `/var/lib/lifeatlas`. Both the application and queue containers bind-mount your external host directory at `/var/lib/lifeatlas/backups`. Stored paths remain relative, such as `backups/lifeatlas-2026-10-10-12.sql`. The ordinary `local` disk is unchanged. No backup URL or public storage link is created; backups are not uploaded to a remote service.
+
+### First-time setup
+
+Complete these steps after copying `.env.example` to `.env` and before the first `docker compose up`. The example deliberately leaves `BACKUP_HOST_PATH` empty.
+
+1. Choose an absolute directory path outside the repository and development workspace, then create the directory manually.
+2. Restrict host access to your account and necessary system access. On Windows, use restricted ACLs and remove unnecessary inherited access. On Linux/macOS, use restrictive directory permissions. Ensure Docker can access the directory; Docker Desktop may require file-sharing access.
+3. Set `BACKUP_HOST_PATH` in your local `.env` to the directory you created. Replace the example username with your own; use forward slashes for Windows paths. Quote paths containing spaces.
+
+   | Host | Example `BACKUP_HOST_PATH` | Permission mode |
+   |---|---|---|
+   | Windows | `C:/Users/your-user/LifeAtlasData/backups` | `host` |
+   | Native Linux | `/home/your-user/LifeAtlasData/backups` | `posix` when the worker owns the directory |
+   | macOS with Docker Desktop | `/Users/your-user/LifeAtlasData/backups` | `host` |
+
+   For example, on Windows:
+
+   ```dotenv
+   BACKUP_HOST_PATH=C:/Users/your-user/LifeAtlasData/backups
+   BACKUP_PERMISSION_MODE=host
+   ```
+
+Compose requires a nonempty `BACKUP_HOST_PATH`: an unset or empty value fails configuration with `Set BACKUP_HOST_PATH to an existing external backup directory`. Both services use long bind-mount syntax with `create_host_path: false`; a missing source directory causes Docker startup to fail instead of being silently created. Use a current Docker Compose version that supports this option. Compose supplies `BACKUP_STORAGE_ROOT=/var/lib/lifeatlas` to both services. The job requires the destination to exist and be writable; it never falls back to repository storage.
+
+Windows and Docker Desktop macOS mounts use `host` permission mode: privacy comes from host ACLs or permissions, and the job does not require POSIX `chmod`. Native Linux deployments can select `posix`, which requires successful directory `chmod(0700)` and write access. The host directory's ownership must allow the container's `sail` user to enforce those permissions; Docker Desktop permission translation may differ from native Linux. Run queue workers as `sail`, not root. Both modes require an existing directory; invalid modes fail the backup.
+
+Temporary output and the final file stay on the same mount. Successful jobs retain the newest five completed backups. The Dashboard trigger, queue execution, states, retry behavior, and status UI are unchanged.
+
+### Applying configuration
+
+Changing mounts requires recreating both services; restarting alone does not apply a new mount. Clear cached Laravel configuration before enabling the new worker. Once setup and any migration are complete, use:
+
+```bash
+docker compose exec laravel.test php artisan config:clear
+docker compose up -d --force-recreate laravel.test queue
+```
+
+These are manual operational steps. The worker can process pending jobs immediately when started. For later job-code changes without mount changes, restart the long-running queue worker after clearing cached configuration as needed.
+
+### Manual migration for existing installations
+
+**Migration is not automatic.** No command in this change copies existing files or rewrites backup records.
+
+1. Prevent Dashboard visits and stop the queue gracefully. Allow any running backup to finish; do not interrupt a dump or final rename. Keep the worker stopped throughout transfer and validation.
+2. Create the external destination and configure its ACLs and environment settings as above.
+3. Outside the development agent, copy the contents of the old `storage/app/private/backups` directory into the external directory configured by `BACKUP_HOST_PATH`, preserving filenames, including hidden files. Do not introduce an extra nested `backups` directory or overwrite conflicting files without review.
+4. Verify filenames, counts, and byte sizes locally without opening SQL contents. Review leftover temporary files separately; do not treat them as completed backups. Metadata checks establish transfer completeness, not restorability.
+5. Leave database records unchanged: paths produced by the existing job retain their `backups/` prefix and resolve through the new disk root. Any manually altered or absolute paths require separate review.
+6. While the worker remains stopped, validate the mount and create/rename/delete permissions as `sail` using only disposable synthetic files. Confirm the source is the external directory.
+7. Clear cached configuration and recreate the application and queue services only after transfer verification. Resume Dashboard use. Pending jobs carry backup IDs and will use the new disk.
+8. Keep the old copies until acceptance. Their later removal is a separate manual action. Do not remove or alter backup records during migration.
+
+Do not enable retention against an incomplete destination: existing retention behavior can delete older completed records when their files are absent from the selected disk. Completed records do not cause Dashboard to recreate missing files. If rolling back after new backups have been produced, account for those new files before switching destinations again.
+
+### Isolated backup tests
+
+`BackupRuntimeTest` and `BackupStorageTest` bypass the real `.env` and cached configuration, use in-memory SQLite and unique system-temporary storage, and fake dump processes. They never execute a real database dump or use the external backup directory. Run them directly with PHPUnit in an already-running application container, as `sail`:
+
+```bash
+docker exec --user sail --workdir /var/www/html lifeatlas-laravel.test-1 vendor/bin/phpunit --do-not-cache-result --filter='BackupRuntimeTest|BackupStorageTest'
+```
+
+Use the actual existing container name if different. This avoids Compose loading the real `.env`. Do not recreate services merely to run these tests.
 
 ## Project status
 

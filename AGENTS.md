@@ -36,4 +36,6 @@ Recent commits use short, lowercase summaries such as `added database backup fea
 
 ## Security & Configuration
 
-Keep secrets in `.env`; document new settings in `.env.example`. Never commit credentials, database dumps, or private backups under `storage/app/private/backups/`.
+Keep secrets in `.env`; document new settings in `.env.example`. Never commit credentials or database dumps. Backups use the dedicated `backups` disk rooted at `/var/lib/lifeatlas`, with an external host directory mounted at `/var/lib/lifeatlas/backups` in both application and queue containers. Leave `BACKUP_HOST_PATH` empty in `.env.example`; document generic paths without personal usernames. Users must set an absolute external path explicitly and create the host directory manually before starting Docker. Backups remain private and local. Never fall back to repository storage or migrate existing backups automatically. Windows and Docker Desktop macOS use `BACKUP_PERMISSION_MODE=host` and restricted host access; native Linux can use `posix` for directory permissions 0700 when the worker can enforce them.
+
+Backup storage tests extend `Tests\Support\IsolatedBackupTestCase`: they bypass the real `.env` and cached configuration, use in-memory SQLite and unique temporary storage, and fake dump processes. Run only `BackupRuntimeTest|BackupStorageTest` when real data must not be accessed. Do not restart services, run real dumps, or migrate backup files as part of these tests.
