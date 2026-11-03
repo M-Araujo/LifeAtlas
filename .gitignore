@@ -5,6 +5,8 @@
 !.env.example
 *.sql
 *.sql.gz
+*.sql.*.tmp
+*.sql.tmp
 *.db
 .phpactor.json
 .phpunit.result.cache

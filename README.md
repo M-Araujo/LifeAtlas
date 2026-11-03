@@ -47,7 +47,7 @@ Dashboard checks whether a backup is needed for the current day. Laravel’s dat
 
 A unique backup-date constraint, transactional coordination, and overlap protection reduce duplicate work. Backup records track pending, running, completed, and failed states.
 
-The job writes to a temporary file, checks that the output is nonempty, and renames it to its final location after successful completion. Failure handling removes temporary output and records a readable status. Dump diagnostics are filtered before logging, and a failed backup can be retried through a subsequent Dashboard visit.
+The job reserves a unique temporary file exclusively, checks that the output is nonempty, and publishes it using an atomic hard link that never replaces an existing destination. Cleanup removes only its own temporary file. Dump diagnostics are filtered before logging, and a failed backup can be retried through a subsequent Dashboard visit.
 
 After success, retention attempts to keep the latest five completed backups. Retention errors are handled separately so they do not invalidate a newly completed backup.
 
@@ -219,13 +219,15 @@ Backups remain private and local on your computer, outside the repository. They 
 
 Complete these steps after copying `.env.example` to `.env` and before the first `docker compose up`. The example deliberately leaves `BACKUP_HOST_PATH` empty.
 
-1. Choose an absolute directory path outside the repository and development workspace, then create the directory manually.
+1. With `BACKUP_HOST_PATH` unset or empty, Compose uses `../LifeAtlasData/backups`, relative to the directory containing `compose.yaml`. Create that directory manually before starting Docker (for example, `mkdir -p ../LifeAtlasData/backups` on Linux/WSL2). For `/home/example/projects/LifeAtlas`, this resolves to `/home/example/projects/LifeAtlasData/backups`. Alternatively, choose an absolute external path. Nothing creates or migrates backup directories automatically.
 2. Restrict host access to your account and necessary system access. On Windows, use restricted ACLs and remove unnecessary inherited access. On Linux/macOS, use restrictive directory permissions. Ensure Docker can access the directory; Docker Desktop may require file-sharing access.
-3. Set `BACKUP_HOST_PATH` in your local `.env` to the directory you created. Replace the example username with your own; use forward slashes for Windows paths. Quote paths containing spaces.
+3. Leave `BACKUP_HOST_PATH` empty for the default, or set it in your local `.env` to the directory you selected. Use the path syntax of the environment running Compose: forward-slash drive paths from Windows, `/mnt/c/...` from WSL2. Replace the example username with your own. Quote paths containing spaces. An exported shell variable overrides the value in `.env`.
 
    | Host | Example `BACKUP_HOST_PATH` | Permission mode |
    |---|---|---|
    | Windows | `C:/Users/your-user/LifeAtlasData/backups` | `host` |
+   | WSL2 using a Windows folder | `/mnt/c/Users/your-user/LifeAtlasData/backups` | `host` |
+   | WSL2 using its Linux filesystem | `/home/your-user/LifeAtlasData/backups` | `posix` when the worker owns the directory |
    | Native Linux | `/home/your-user/LifeAtlasData/backups` | `posix` when the worker owns the directory |
    | macOS with Docker Desktop | `/Users/your-user/LifeAtlasData/backups` | `host` |
 
@@ -236,11 +238,19 @@ Complete these steps after copying `.env.example` to `.env` and before the first
    BACKUP_PERMISSION_MODE=host
    ```
 
-Compose requires a nonempty `BACKUP_HOST_PATH`: an unset or empty value fails configuration with `Set BACKUP_HOST_PATH to an existing external backup directory`. Both services use long bind-mount syntax with `create_host_path: false`; a missing source directory causes Docker startup to fail instead of being silently created. Use a current Docker Compose version that supports this option. Compose supplies `BACKUP_STORAGE_ROOT=/var/lib/lifeatlas` to both services. The job requires the destination to exist and be writable; it never falls back to repository storage.
+Compose uses `${BACKUP_HOST_PATH:-../LifeAtlasData/backups}` for both services, so unset and empty values select the same default. Both services use long bind-mount syntax with `create_host_path: false`; a missing source directory causes Docker startup to fail instead of being silently created. Use a current Docker Compose version that supports this option. Compose supplies `BACKUP_STORAGE_ROOT=/var/lib/lifeatlas` to both services. Laravel always writes through that container root; it does not interpret the host path. The job requires the destination to exist and be writable; it never falls back to repository storage.
 
-Windows and Docker Desktop macOS mounts use `host` permission mode: privacy comes from host ACLs or permissions, and the job does not require POSIX `chmod`. Native Linux deployments can select `posix`, which requires successful directory `chmod(0700)` and write access. The host directory's ownership must allow the container's `sail` user to enforce those permissions; Docker Desktop permission translation may differ from native Linux. Run queue workers as `sail`, not root. Both modes require an existing directory; invalid modes fail the backup.
+Windows, WSL2 Windows mounts (`/mnt/c`) and Docker Desktop macOS mounts should use `host` permission mode: privacy comes from host ACLs or permissions, and the job does not require POSIX `chmod`. Linux and WSL2 Linux filesystems can select `posix`, which requires successful directory `chmod(0700)`, confirmation of the resulting mode, and write access. The host directory's ownership must allow the container's `sail` user to enforce those permissions; Docker Desktop permission translation may differ from native Linux. A Windows filesystem may report successful `chmod` without enforcing it; `posix` now rejects a resulting mode other than `0700`. Run queue workers as `sail`, not root. Both modes require an existing directory; invalid modes fail the backup.
 
-Temporary output and the final file stay on the same mount. Successful jobs retain the newest five completed backups. The Dashboard trigger, queue execution, states, retry behavior, and status UI are unchanged.
+WSL2 access across `/mnt/c` can be slower than access to its Linux filesystem. Keep project code and dependencies on the Linux filesystem where possible; storing backups on Windows can take longer. The dump timeout remains 600 seconds. Host mode does not grant write access: Docker sharing settings and Windows ACLs must still allow the worker to create, hard-link and unlink files. Publication requires same-filesystem hard links (normally supported by Linux filesystems and NTFS, but not every Windows mount or sharing layer). If unsupported, the job fails safely; it never falls back to a replacement-prone rename or copy. Validate support with disposable synthetic files before enabling the worker on a new mount.
+
+Temporary output and the final file stay on the same mount. A destination collision, including a symlink or a competing publication, fails without replacing it. Each invocation owns a different exclusive temporary file; only that file's matching device/inode may be cleaned up. An atomic database status claim prevents two workers from starting the same pending backup. Interrupted publication may leave an orphan file; it is preserved for manual review.
+
+Always choose a host directory outside the repository. A bind mount hides its host location from Laravel, so its container-side path checks cannot prove that a custom host source is outside the checkout. `.gitignore` excludes SQL dumps and both legacy and randomized `.sql.*.tmp` temporary names as a second safeguard; ignore rules do not protect files already tracked by Git or other dump formats. Do not force-add backup files.
+
+Retention keeps the newest five distinct available copies, rather than the newest five records. An eligible copy must have a direct `backups/<filename>.sql` relative path and be a readable, nonempty regular file with one hard link. Missing, empty, unreadable, duplicate, symlinked, hard-linked or malformed entries are preserved and logged without counting as available copies. This is structural validation, not a guarantee that the SQL can be restored.
+
+Before deleting an older eligible file, retention rechecks its device/inode and the five protected copies. It deletes the database record only after successful unlink. Invalid paths are rejected before filesystem access, and changes to protected copies stop deletion. Host ACLs must restrict directory changes to trusted users: portable PHP path-based filesystem calls cannot eliminate all races against a hostile host process replacing directories between checks and unlink. A crash or database failure after unlink can leave a preserved record for a missing file. Neither case triggers automatic reconciliation.
 
 ### Applying configuration
 
@@ -253,20 +263,42 @@ docker compose up -d --force-recreate laravel.test queue
 
 These are manual operational steps. The worker can process pending jobs immediately when started. For later job-code changes without mount changes, restart the long-running queue worker after clearing cached configuration as needed.
 
+For an existing WSL2 installation using the Compose project `lifeatlas_wsl`, run Compose from the Linux project directory and keep using `-p lifeatlas_wsl` so it selects the existing services and database volume. To use a Windows backup folder, set these values manually in your `.env`, replacing the example username:
+
+```dotenv
+BACKUP_HOST_PATH=/mnt/c/Users/your-user/LifeAtlasData/backups
+BACKUP_PERMISSION_MODE=host
+```
+
+Confirm that this folder already exists and contains the intended backup set before enabling the worker. When ready, prevent Dashboard visits, let any active backup finish, and stop the queue gracefully. After any separately reviewed transfer and permission verification, apply the settings manually:
+
+```bash
+docker compose -p lifeatlas_wsl exec laravel.test php artisan config:clear
+docker compose -p lifeatlas_wsl up -d --no-deps --force-recreate laravel.test queue
+```
+
+These commands are not part of the tests and must not be run automatically. They recreate the application and worker; `--no-deps` avoids recreating MariaDB. Do not change the Compose project name, remove volumes, or perform a database import to apply a backup-path setting.
+
 ### Manual migration for existing installations
 
 **Migration is not automatic.** No command in this change copies existing files or rewrites backup records.
 
-1. Prevent Dashboard visits and stop the queue gracefully. Allow any running backup to finish; do not interrupt a dump or final rename. Keep the worker stopped throughout transfer and validation.
+1. Prevent Dashboard visits and stop the queue gracefully. Allow any running backup to finish; do not interrupt a dump or publication. Keep the worker stopped throughout transfer and validation.
 2. Create the external destination and configure its ACLs and environment settings as above.
-3. Outside the development agent, copy the contents of the old `storage/app/private/backups` directory into the external directory configured by `BACKUP_HOST_PATH`, preserving filenames, including hidden files. Do not introduce an extra nested `backups` directory or overwrite conflicting files without review.
+3. Outside the development agent, copy the contents of the previous backup directory into the external directory configured by `BACKUP_HOST_PATH`, preserving filenames, including hidden files. For older installations the source may be `storage/app/private/backups`; for existing external mounts, use the previous host directory. Do not introduce an extra nested `backups` directory or overwrite conflicting files without review.
 4. Verify filenames, counts, and byte sizes locally without opening SQL contents. Review leftover temporary files separately; do not treat them as completed backups. Metadata checks establish transfer completeness, not restorability.
 5. Leave database records unchanged: paths produced by the existing job retain their `backups/` prefix and resolve through the new disk root. Any manually altered or absolute paths require separate review.
-6. While the worker remains stopped, validate the mount and create/rename/delete permissions as `sail` using only disposable synthetic files. Confirm the source is the external directory.
+6. While the worker remains stopped, validate the mount and create/hard-link/unlink permissions as `sail` using only disposable synthetic files. Confirm the source is the external directory.
 7. Clear cached configuration and recreate the application and queue services only after transfer verification. Resume Dashboard use. Pending jobs carry backup IDs and will use the new disk.
 8. Keep the old copies until acceptance. Their later removal is a separate manual action. Do not remove or alter backup records during migration.
 
-Do not enable retention against an incomplete destination: existing retention behavior can delete older completed records when their files are absent from the selected disk. Completed records do not cause Dashboard to recreate missing files. If rolling back after new backups have been produced, account for those new files before switching destinations again.
+Retention preserves unavailable or unsafe records without counting them as copies. This can leave more than five completed records and requires manual reconciliation after a mount change. Only older eligible copies beyond the five available copies are candidates for deletion. Completed records do not cause Dashboard to recreate missing files. If rolling back after new backups have been produced, account for those new files before switching destinations again.
+
+### Debugging status, listing and restoration
+
+The Dashboard displays only the latest database record, not a directory listing. `completed` records describe a previously successful dump; they do not verify current file availability or restorability. There is no backup listing, download or restore endpoint/command in the application. Restoration must be planned separately and validated against a disposable database; do not import a dump into the running application database as a diagnostic step. Synthetic dump tests verify job orchestration, not SQL restorability.
+
+For creation failures, check the selected host directory, both service mounts, worker create/hard-link/unlink access and the chosen permission mode. A stopped worker leaves jobs pending; an interrupted worker may leave a running record or temporary file. Inspect filtered application diagnostics locally without publishing raw logs or SQL. After changing mounts, recreate both services and clear cached configuration only when ready; a restart alone does not apply mounts. No diagnostic in this change reads or repairs existing backups automatically.
 
 ### Isolated backup tests
 
@@ -277,6 +309,8 @@ docker exec --user sail --workdir /var/www/html lifeatlas-laravel.test-1 vendor/
 ```
 
 Use the actual existing container name if different. This avoids Compose loading the real `.env`. Do not recreate services merely to run these tests.
+
+Validate Compose independently with `python tests/compose_backups_test.py` (Python 3 and Docker Compose v2 required). It uses synthetic environment files, ignores shell overrides for Compose inputs, and runs only `docker compose config`. It covers missing/empty values, Linux, WSL2, Windows and spaced paths, permission modes, the fixed container destination and the unchanged database volume. It does not contact the Docker daemon, create host backup directories, or load the real `.env`. This configuration check does not prove runtime ACLs or filesystem performance on every host.
 
 ## Project status
 

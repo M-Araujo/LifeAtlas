@@ -40,11 +40,14 @@ class CreateBackup implements ShouldQueue
             return;
         }
 
-        $backup->update([
+        $claimed = Backup::whereKey($backup->id)->where('status', Backup::STATUS_PENDING)->update([
             'status' => Backup::STATUS_RUNNING,
             'started_at' => now(),
             'error_message' => null,
         ]);
+        if (! $claimed) {
+            return;
+        }
 
         $directory = 'backups';
 
@@ -53,9 +56,9 @@ class CreateBackup implements ShouldQueue
             $backup->backup_date->format('Y-m-d'),
             $backup->id,
         );
-        $temporaryPath = $directory.'/.'.$filename.'.tmp';
         $finalPath = $directory.'/'.$filename;
         $temporaryFile = null;
+        $temporaryIdentity = null;
 
         try {
             $root = config('filesystems.disks.backups.root');
@@ -68,26 +71,35 @@ class CreateBackup implements ShouldQueue
             }
 
             $disk = Storage::disk('backups');
-            $resolvedDirectory = realpath($disk->path($directory));
+            $resolvedDirectory = $this->authorizedDirectory($disk);
+            $this->prepareBackupDirectory($resolvedDirectory);
+            $finalFile = $resolvedDirectory.'/'.$filename;
 
-            if ($resolvedDirectory && ($resolvedDirectory === $repository
-                || str_starts_with($resolvedDirectory, $repository.DIRECTORY_SEPARATOR))) {
-                throw new RuntimeException('The backup directory must be outside the repository.');
+            // Reserve a private, unpredictable temporary name exclusively. Never
+            // reuse another invocation's temporary file, including after a retry.
+            $candidate = $resolvedDirectory.'/.'.$filename.'.'.bin2hex(random_bytes(16)).'.tmp';
+            $handle = @fopen($candidate, 'x+b');
+            if ($handle === false) {
+                throw new RuntimeException('An exclusive temporary backup file could not be created.');
             }
-
-            $this->prepareBackupDirectory($disk->path($directory));
-            $temporaryFile = $disk->path($temporaryPath);
-            $finalFile = $disk->path($finalPath);
+            $temporaryIdentity = fstat($handle);
+            fclose($handle);
+            $temporaryFile = $candidate;
 
             $this->dumpDatabase($temporaryFile);
 
-            if (! is_file($temporaryFile) || filesize($temporaryFile) === 0) {
+            $temporaryStat = $this->regularFile($temporaryFile);
+            if (! $temporaryStat || ! $this->sameFile($temporaryIdentity, $temporaryStat)) {
                 throw new RuntimeException('The database dump did not create a usable file.');
             }
 
-            if (! rename($temporaryFile, $finalFile)) {
-                throw new RuntimeException('The temporary backup could not be finalized.');
+            if ($this->authorizedDirectory($disk) !== $resolvedDirectory) {
+                throw new RuntimeException('The backup directory changed during the dump.');
             }
+
+            $this->publishBackup($temporaryFile, $finalFile);
+            $this->removeOwnedTemporaryFile($temporaryFile, $temporaryIdentity);
+            $temporaryFile = null;
 
             $backup->update([
                 'status' => Backup::STATUS_COMPLETED,
@@ -105,8 +117,8 @@ class CreateBackup implements ShouldQueue
                 ]);
             }
         } catch (Throwable $exception) {
-            if ($temporaryFile !== null && is_file($temporaryFile)) {
-                unlink($temporaryFile);
+            if ($temporaryFile !== null && $temporaryIdentity !== null) {
+                $this->removeOwnedTemporaryFile($temporaryFile, $temporaryIdentity);
             }
 
             $backup->update([
@@ -119,6 +131,64 @@ class CreateBackup implements ShouldQueue
                 'backup_id' => $backup->id,
                 'exception' => $exception,
             ]);
+        }
+    }
+
+    private function authorizedDirectory($disk): string
+    {
+        $root = realpath($disk->path(''));
+        $path = $disk->path('backups');
+        clearstatcache(true, $path);
+        $resolved = realpath($path);
+        $repository = realpath(base_path());
+
+        if (! $root || ! $resolved || ! $repository || is_link($path)
+            || $resolved !== $root.DIRECTORY_SEPARATOR.'backups'
+            || $resolved === $repository || str_starts_with($resolved, $repository.DIRECTORY_SEPARATOR)) {
+            throw new RuntimeException('The authorized backup directory must exist outside the repository without symlinks.');
+        }
+
+        return $resolved;
+    }
+
+    private function regularFile(string $path): ?array
+    {
+        clearstatcache(true, $path);
+        $stat = @lstat($path);
+
+        return $stat && ($stat['mode'] & 0170000) === 0100000
+            && $stat['size'] > 0 && $stat['nlink'] === 1 && is_readable($path) ? $stat : null;
+    }
+
+    private function sameFile(array $before, array $after): bool
+    {
+        return $before['dev'] === $after['dev'] && $before['ino'] === $after['ino'];
+    }
+
+    private function publishBackup(string $temporaryFile, string $finalFile): void
+    {
+        // link() publishes a complete file atomically and fails if any entry
+        // already occupies the destination. Never fall back to rename/copy.
+        if (! @link($temporaryFile, $finalFile)) {
+            throw new RuntimeException('Backup publication failed: destination occupied or filesystem does not support hard links. Existing files were preserved.');
+        }
+    }
+
+    private function removeOwnedTemporaryFile(string $path, array $identity): void
+    {
+        if (is_link(dirname($path)) || realpath(dirname($path)) !== dirname($path)) {
+            Log::warning('LifeAtlas backup temporary cleanup skipped an unsafe directory.', ['backup_id' => $this->backupId]);
+
+            return;
+        }
+        clearstatcache(true, $path);
+        $current = @lstat($path);
+        if ($current && ($current['mode'] & 0170000) === 0100000 && $this->sameFile($identity, $current)) {
+            if (! @unlink($path)) {
+                Log::warning('LifeAtlas backup temporary cleanup failed.', ['backup_id' => $this->backupId]);
+            }
+        } else {
+            Log::warning('LifeAtlas backup temporary cleanup skipped a changed file.', ['backup_id' => $this->backupId]);
         }
     }
 
@@ -139,6 +209,10 @@ class CreateBackup implements ShouldQueue
         }
 
         clearstatcache(true, $directory);
+
+        if ($mode === 'posix' && (fileperms($directory) & 0777) !== 0700) {
+            throw new RuntimeException('The backup filesystem did not enforce directory permissions 0700. Use host mode with restricted host access on Windows mounts.');
+        }
 
         if (! is_writable($directory)) {
             throw new RuntimeException('The private backup directory is not writable by the queue worker user.');
@@ -198,16 +272,63 @@ class CreateBackup implements ShouldQueue
 
     private function pruneCompletedBackups($disk): void
     {
-        Backup::where('status', Backup::STATUS_COMPLETED)
+        $directory = $this->authorizedDirectory($disk);
+        $available = [];
+        $seen = [];
+
+        foreach (Backup::where('status', Backup::STATUS_COMPLETED)
             ->orderByDesc('backup_date')
-            ->get()
-            ->slice(5)
-            ->each(function (Backup $backup) use ($disk) {
-                if ($backup->path && $disk->exists($backup->path) && ! $disk->delete($backup->path)) {
+            ->get() as $backup) {
+            // Only direct SQL children are eligible. Never normalize untrusted
+            // database paths: reject absolute paths, traversal and separators.
+            if (! is_string($backup->path)
+                || ! preg_match('/\Abackups\/[A-Za-z0-9][A-Za-z0-9._-]*\.sql\z/D', $backup->path)) {
+                Log::warning('LifeAtlas backup retention skipped an invalid path.', ['backup_id' => $backup->id]);
+
+                continue;
+            }
+
+            $path = $directory.'/'.substr($backup->path, strlen('backups/'));
+            $stat = $this->regularFile($path);
+            if (! $stat || realpath($path) !== $path) {
+                Log::warning('LifeAtlas backup retention skipped an unavailable or unsafe file.', ['backup_id' => $backup->id]);
+
+                continue;
+            }
+            // Duplicate records must not count one file as multiple copies.
+            $identity = $stat['dev'].':'.$stat['ino'];
+            if (isset($seen[$identity])) {
+                Log::warning('LifeAtlas backup retention skipped a duplicate file.', ['backup_id' => $backup->id]);
+
+                continue;
+            }
+            $seen[$identity] = true;
+            $available[] = [$backup, $path, $stat];
+        }
+
+        foreach (array_slice($available, 5) as [$backup, $path, $stat]) {
+            // Revalidate immediately before deletion and stop on any ambiguity.
+            // The host must restrict concurrent directory changes to trusted users.
+            if ($this->authorizedDirectory($disk) !== $directory) {
+                throw new RuntimeException('The backup directory changed during retention.');
+            }
+            $current = $this->regularFile($path);
+            $protected = array_slice($available, 0, 5);
+            foreach ($protected as [, $protectedPath, $protectedStat]) {
+                $present = $this->regularFile($protectedPath);
+                if (! $present || ! $this->sameFile($protectedStat, $present)) {
+                    Log::warning('LifeAtlas backup retention stopped because a retained file changed.');
+
                     return;
                 }
+            }
+            if (! $current || ! $this->sameFile($stat, $current) || ! @unlink($path)) {
+                Log::warning('LifeAtlas backup retention preserved an uncertain record.', ['backup_id' => $backup->id]);
 
-                $backup->delete();
-            });
+                continue;
+            }
+
+            $backup->delete();
+        }
     }
 }

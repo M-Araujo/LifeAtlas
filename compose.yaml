@@ -23,7 +23,7 @@ services:
         volumes:
             - '.:/var/www/html'
             - type: bind
-              source: '${BACKUP_HOST_PATH:?Set BACKUP_HOST_PATH to an existing external backup directory}'
+              source: '${BACKUP_HOST_PATH:-../LifeAtlasData/backups}'
               target: /var/lib/lifeatlas/backups
               bind:
                   create_host_path: false
@@ -61,7 +61,7 @@ services:
         volumes:
             - '.:/var/www/html'
             - type: bind
-              source: '${BACKUP_HOST_PATH:?Set BACKUP_HOST_PATH to an existing external backup directory}'
+              source: '${BACKUP_HOST_PATH:-../LifeAtlasData/backups}'
               target: /var/lib/lifeatlas/backups
               bind:
                   create_host_path: false
